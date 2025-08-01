@@ -2,7 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { connectDB, sequelize } = require('./config/db');
+const { connectDB } = require('./config/db');
+const { sequelize } = require('./models');
 const routes = require('./routes');
 const { errorHandler, notFound } = require('./middlewares/error.middleware');
 
