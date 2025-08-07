@@ -1,7 +1,7 @@
-require('dotenv').config();
-const { Sequelize } = require('sequelize');
+require("dotenv").config();
+const { Sequelize } = require("sequelize");
 
-const env = process.env.NODE_ENV || 'development';
+const env = process.env.NODE_ENV || "development";
 
 const sequelize = new Sequelize(
   process.env.DB_NAME,
@@ -10,15 +10,15 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
-    logging: env === 'production' ? false : console.log,
+    dialect: "mysql",
+    logging: false,
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
-      idle: 10000
-    }
-  }
+      idle: 10000,
+    },
+  },
 );
 
 module.exports = sequelize;
