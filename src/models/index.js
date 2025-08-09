@@ -43,6 +43,7 @@ Permission.belongsToMany(Role, {
   foreignKey: "permission_id",
   otherKey: "role_id",
 });
+
 Role.belongsToMany(User, {
   through: UserRole,
   foreignKey: "role_id",
@@ -55,7 +56,13 @@ Hotel.hasMany(RoomType, { foreignKey: "hotel_id" });
 Hotel.hasMany(Room, { foreignKey: "hotel_id" });
 Hotel.hasMany(Booking, { foreignKey: "hotel_id" });
 Hotel.hasMany(Review, { foreignKey: "hotel_id" });
-Hotel.belongsToMany(Amenity, { through: HotelAmenity, foreignKey: "hotel_id" });
+
+Hotel.belongsToMany(Amenity, {
+  through: HotelAmenity,
+  foreignKey: "hotel_id",
+  otherKey: "amenity_id",
+});
+
 Hotel.hasMany(Image, {
   foreignKey: "entity_id",
   constraints: false,
@@ -65,10 +72,13 @@ Hotel.hasMany(Image, {
 // RoomType
 RoomType.belongsTo(Hotel, { foreignKey: "hotel_id" });
 RoomType.hasMany(Room, { foreignKey: "room_type_id" });
+
 RoomType.belongsToMany(Amenity, {
   through: RoomTypeAmenity,
   foreignKey: "room_type_id",
+  otherKey: "amenity_id",
 });
+
 RoomType.hasMany(Image, {
   foreignKey: "entity_id",
   constraints: false,
@@ -96,7 +106,6 @@ Payment.belongsTo(User, { foreignKey: "user_id" });
 Review.belongsTo(Booking, { foreignKey: "booking_id" });
 Review.belongsTo(User, { foreignKey: "user_id" });
 Review.belongsTo(Hotel, { foreignKey: "hotel_id" });
-
 // Export everything
 module.exports = {
   sequelize,
