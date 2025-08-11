@@ -53,3 +53,66 @@ module.exports.login = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+//[POST] /auth/refresh
+module.exports.refresh = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    const result = await authService.refreshAccessToken(refreshToken);
+
+    res.status(200).json({
+      access_token: result.access_token,
+      expires_in: result.expires_in,
+      user: result.user,
+    });
+  } catch (error) {
+    if (error.statusCode === 401) {
+      return res.status(401).json({ message: error.message });
+    }
+    if (error.statusCode === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    console.error("Refresh Token Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//[POST] /auth/logout
+module.exports.logout = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    await authService.logoutUser(refreshToken);
+
+    // Clear refresh token cookie
+    res.clearCookie("refresh_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ message: "Logged out" });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//[POST] /auth/logout-all
+module.exports.logoutAll = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    await authService.logoutAllSessions(userId);
+
+    // Clear refresh token cookie
+    res.clearCookie("refresh_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ message: "All sessions terminated" });
+  } catch (error) {
+    console.error("Logout All Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

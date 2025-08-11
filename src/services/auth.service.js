@@ -228,7 +228,152 @@ const loginUser = async (email, password) => {
   };
 };
 
+/**
+ * Refresh access token
+ * @param {string} refreshToken - The refresh token from cookie
+ * @returns {object} { access_token, user }
+ */
+const refreshAccessToken = async (refreshToken) => {
+  if (!refreshToken) {
+    const error = new Error("Session expired, please login again");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Hash the refresh token to look it up
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  // Find the refresh token in database
+  const storedToken = await RefreshToken.findOne({
+    where: { token_hash: tokenHash },
+  });
+
+  if (!storedToken) {
+    const error = new Error("Session expired, please login again");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Check if token has expired
+  const now = new Date();
+  if (storedToken.expires_at < now) {
+    // Delete expired token
+    await storedToken.destroy();
+    const error = new Error("Session expired, please login again");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Load user with current roles and permissions
+  const user = await User.findByPk(storedToken.user_id, {
+    include: [
+      {
+        model: Role,
+        through: { attributes: [] },
+        attributes: ["id", "name"],
+        include: [
+          {
+            model: Permission,
+            through: { attributes: [] },
+            attributes: ["id", "code", "module"],
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Extract roles and permissions
+  const roles = user.Roles.map((role) => role.name);
+  const permissions = [];
+  user.Roles.forEach((role) => {
+    if (role.Permissions) {
+      role.Permissions.forEach((permission) => {
+        if (!permissions.find((p) => p.code === permission.code)) {
+          permissions.push({
+            id: permission.id,
+            code: permission.code,
+            module: permission.module,
+          });
+        }
+      });
+    }
+  });
+
+  // Create new access token
+  const accessTokenPayload = {
+    user_id: user.id,
+    email: user.email,
+    roles,
+    permissions: permissions.map((p) => p.code),
+  };
+
+  const accessToken = jwt.sign(accessTokenPayload, jwtConfig.ACCESS_SECRET, {
+    expiresIn: jwtConfig.ACCESS_EXPIRES_IN,
+  });
+
+  return {
+    access_token: accessToken,
+    expires_in: 15 * 60, // 15 minutes in seconds
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      roles,
+      permissions: permissions.map((p) => ({ code: p.code, module: p.module })),
+    },
+  };
+};
+
+/**
+ * Logout user (single session)
+ * @param {string} refreshToken - The refresh token from cookie
+ */
+const logoutUser = async (refreshToken) => {
+  if (!refreshToken) {
+    // No refresh token in cookie, still return success
+    return { message: "Logged out" };
+  }
+
+  // Hash the refresh token
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  // Delete refresh token from database
+  await RefreshToken.destroy({
+    where: { token_hash: tokenHash },
+  });
+
+  return { message: "Logged out" };
+};
+
+/**
+ * Logout all sessions
+ * @param {string} userId - User ID from access token
+ */
+const logoutAllSessions = async (userId) => {
+  // Delete all refresh tokens for this user
+  await RefreshToken.destroy({
+    where: { user_id: userId },
+  });
+
+  return { message: "All sessions terminated" };
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  refreshAccessToken,
+  logoutUser,
+  logoutAllSessions,
 };
