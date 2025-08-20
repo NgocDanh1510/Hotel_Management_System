@@ -7,6 +7,7 @@ const {
 } = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
 const updateUserSchema = require("../../validations/schemaJoi/admin/updateUser.validation");
+const assignRolesSchema = require("../../validations/schemaJoi/admin/assignRoles.validation");
 
 // All routes require authentication and user.manage permission
 router.use(authenticateToken);
@@ -23,6 +24,18 @@ router.get("/", adminUsersController.listUsers);
  * Get user detail with stats
  */
 router.get("/:id", adminUsersController.getUserDetail);
+
+/**
+ * PUT /api/v1/admin/users/:id/roles
+ * Assign roles to a user
+ * Additional permission required: role.manage
+ */
+router.put(
+  "/:id/roles",
+  requirePermission("role.manage"),
+  validate(assignRolesSchema),
+  adminUsersController.assignRoles,
+);
 
 /**
  * PUT /api/v1/admin/users/:id

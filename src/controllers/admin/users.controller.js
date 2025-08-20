@@ -1,6 +1,55 @@
 const adminUserService = require("../../services/admin/users.service");
 
 /**
+ * PUT /api/v1/admin/users/:id/roles
+ * Assign roles to a user
+ * Permission required: user.manage, role.manage
+ */
+const assignRoles = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.user_id;
+    const { role_ids, role_names } = req.body;
+
+    const result = await adminUserService.assignRoles(
+      id,
+      { role_ids, role_names },
+      currentUserId,
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "roles updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: error.message,
+        data: null,
+      });
+    }
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: error.message,
+        data: null,
+      });
+    }
+    if (error.statusCode === 403) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: error.message,
+        data: null,
+      });
+    }
+    console.error("Assign roles error:", error);
+    next(error);
+  }
+};
+
+/**
  * GET /api/v1/admin/users
  * List all users with filtering, searching, and pagination
  * Permission required: user.manage
@@ -100,6 +149,7 @@ const updateUser = async (req, res, next) => {
 };
 
 module.exports = {
+  assignRoles,
   listUsers,
   getUserDetail,
   updateUser,

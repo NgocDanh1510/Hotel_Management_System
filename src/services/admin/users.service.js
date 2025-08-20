@@ -249,8 +249,121 @@ const updateUser = async (id, updateData, currentUserId) => {
   };
 };
 
+/**
+ * Assign roles to a user
+ * @param {string} targetUserId - User ID to assign roles to
+ * @param {Object} roleData - Either { role_ids: string[] } or { role_names: string[] }
+ * @param {string} currentUserId - ID of the admin performing the assignment
+ * @returns {Promise<Object>} - Updated user with roles
+ */
+const assignRoles = async (targetUserId, roleData, currentUserId) => {
+  const { role_ids, role_names } = roleData;
+
+  // Get target user with current roles
+  const targetUser = await User.findByPk(targetUserId, {
+    include: [
+      {
+        model: Role,
+        through: { attributes: [] },
+        attributes: ["id", "name"],
+      },
+    ],
+  });
+
+  if (!targetUser) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Fetch roles from DB
+  let rolesToAssign;
+  if (role_ids && role_ids.length > 0) {
+    rolesToAssign = await Role.findAll({
+      where: { id: role_ids },
+      attributes: ["id", "name"],
+    });
+
+    if (rolesToAssign.length !== role_ids.length) {
+      const error = new Error("One or more roles do not exist");
+      error.statusCode = 400;
+      throw error;
+    }
+  } else {
+    rolesToAssign = await Role.findAll({
+      where: { name: role_names },
+      attributes: ["id", "name"],
+    });
+
+    if (rolesToAssign.length !== role_names.length) {
+      const error = new Error("One or more roles do not exist");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  // Check if user is trying to remove all roles from themselves
+  if (targetUserId === currentUserId && rolesToAssign.length === 0) {
+    const error = new Error("Cannot remove all roles from yourself");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Check if user is trying to remove admin role from themselves
+  const currentUserRoles = targetUser.Roles.map((r) => r.name);
+  const newRoleNames = rolesToAssign.map((r) => r.name);
+  if (
+    targetUserId === currentUserId &&
+    currentUserRoles.includes("admin") &&
+    !newRoleNames.includes("admin")
+  ) {
+    const error = new Error("Cannot remove admin role from yourself");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Use transaction for atomicity
+  const transaction = await sequelize.transaction();
+
+  try {
+    // Get current role IDs
+    const currentRoleIds = targetUser.Roles.map((r) => r.id);
+
+    // Remove old roles
+    await targetUser.removeRoles(currentRoleIds, { transaction });
+
+    // Add new roles
+    await targetUser.addRoles(rolesToAssign, { transaction });
+
+    await transaction.commit();
+
+    // Fetch updated user with roles
+    const updatedUser = await User.findByPk(targetUserId, {
+      include: [
+        {
+          model: Role,
+          through: { attributes: [] },
+          attributes: ["id", "name"],
+        },
+      ],
+      attributes: ["id", "updated_at"],
+    });
+
+    return {
+      user_id: updatedUser.id,
+      roles: updatedUser.Roles.map((r) => ({ id: r.id, name: r.name })),
+      updated_by: currentUserId,
+      updated_at: updatedUser.updated_at,
+    };
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
 module.exports = {
   listUsers,
   getUserDetail,
   updateUser,
+  assignRoles,
 };

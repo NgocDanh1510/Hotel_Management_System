@@ -1,4 +1,5 @@
 const authService = require("../services/auth.service");
+const profileService = require("../services/profile.service");
 const jwtConfig = require("../config/jwt.config");
 
 //[POST] /auth/register
@@ -114,5 +115,70 @@ module.exports.logoutAll = async (req, res) => {
   } catch (error) {
     console.error("Logout All Error:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//[GET] /me
+//Get current user profile
+module.exports.getProfile = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const profile = await profileService.getProfile(userId);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "get profile successfully",
+      data: profile,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: error.message,
+        data: null,
+      });
+    }
+    console.error("Get profile error:", error);
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+    });
+  }
+};
+
+//[PUT] /me
+//Update current user profile
+module.exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const result = await profileService.updateProfile(userId, req.body);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "profile updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: error.message,
+        data: null,
+      });
+    }
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: error.message,
+        data: null,
+      });
+    }
+    console.error("Update profile error:", error);
+    res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+    });
   }
 };
