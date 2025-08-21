@@ -1,18 +1,23 @@
 const authService = require("../services/auth.service");
 const profileService = require("../services/profile.service");
 const jwtConfig = require("../config/jwt.config");
+const { sendSuccess, sendError } = require("../utils/apiResponse");
 
 //[POST] /auth/register
 module.exports.register = async (req, res) => {
   try {
     const result = await authService.registerUser(req.body);
-    res.status(201).json(result);
+    sendSuccess(res, {
+      statusCode: 201,
+      message: "User registered successfully",
+      data: result,
+    });
   } catch (error) {
     if (error.statusCode === 409) {
-      return res.status(409).json({ message: error.message });
+      return sendError(res, { statusCode: 409, message: error.message });
     }
     console.error("Registration Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -32,26 +37,30 @@ module.exports.login = async (req, res) => {
     });
 
     // Return response without refresh_token in body (it's in cookie)
-    res.status(200).json({
-      access_token: result.access_token,
-      expires_in: result.expires_in,
-      user: result.user,
+    sendSuccess(res, {
+      statusCode: 200,
+      message: "Login successful",
+      data: {
+        access_token: result.access_token,
+        expires_in: result.expires_in,
+        user: result.user,
+      },
     });
   } catch (error) {
     if (error.statusCode === 401) {
-      return res.status(401).json({ message: error.message });
+      return sendError(res, { statusCode: 401, message: error.message });
     }
     if (error.statusCode === 403) {
-      return res.status(403).json({ message: error.message });
+      return sendError(res, { statusCode: 403, message: error.message });
     }
     if (error.statusCode === 423) {
-      return res.status(423).json({
+      return sendError(res, {
+        statusCode: 423,
         message: error.message,
-        locked_until: error.locked_until,
       });
     }
     console.error("Login Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -61,20 +70,24 @@ module.exports.refresh = async (req, res) => {
     const refreshToken = req.cookies.refresh_token;
     const result = await authService.refreshAccessToken(refreshToken);
 
-    res.status(200).json({
-      access_token: result.access_token,
-      expires_in: result.expires_in,
-      user: result.user,
+    sendSuccess(res, {
+      statusCode: 200,
+      message: "Token refreshed successfully",
+      data: {
+        access_token: result.access_token,
+        expires_in: result.expires_in,
+        user: result.user,
+      },
     });
   } catch (error) {
     if (error.statusCode === 401) {
-      return res.status(401).json({ message: error.message });
+      return sendError(res, { statusCode: 401, message: error.message });
     }
     if (error.statusCode === 404) {
-      return res.status(404).json({ message: error.message });
+      return sendError(res, { statusCode: 404, message: error.message });
     }
     console.error("Refresh Token Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -91,10 +104,10 @@ module.exports.logout = async (req, res) => {
       sameSite: "strict",
     });
 
-    res.status(200).json({ message: "Logged out" });
+    sendSuccess(res, { statusCode: 200, message: "Logged out successfully" });
   } catch (error) {
     console.error("Logout Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -111,10 +124,13 @@ module.exports.logoutAll = async (req, res) => {
       sameSite: "strict",
     });
 
-    res.status(200).json({ message: "All sessions terminated" });
+    sendSuccess(res, {
+      statusCode: 200,
+      message: "All sessions terminated successfully",
+    });
   } catch (error) {
     console.error("Logout All Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -125,25 +141,20 @@ module.exports.getProfile = async (req, res) => {
     const userId = req.user.user_id;
     const profile = await profileService.getProfile(userId);
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       statusCode: 200,
-      message: "get profile successfully",
+      message: "Get profile successfully",
       data: profile,
     });
   } catch (error) {
     if (error.statusCode === 404) {
-      return res.status(404).json({
+      return sendError(res, {
         statusCode: 404,
         message: error.message,
-        data: null,
       });
     }
     console.error("Get profile error:", error);
-    res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error",
-      data: null,
-    });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };
 
@@ -154,31 +165,25 @@ module.exports.updateProfile = async (req, res) => {
     const userId = req.user.user_id;
     const result = await profileService.updateProfile(userId, req.body);
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       statusCode: 200,
-      message: "profile updated successfully",
+      message: "Profile updated successfully",
       data: result,
     });
   } catch (error) {
     if (error.statusCode === 404) {
-      return res.status(404).json({
+      return sendError(res, {
         statusCode: 404,
         message: error.message,
-        data: null,
       });
     }
     if (error.statusCode === 400) {
-      return res.status(400).json({
+      return sendError(res, {
         statusCode: 400,
         message: error.message,
-        data: null,
       });
     }
     console.error("Update profile error:", error);
-    res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error",
-      data: null,
-    });
+    sendError(res, { statusCode: 500, message: "Internal server error" });
   }
 };

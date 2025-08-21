@@ -1,23 +1,30 @@
-const notFound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
-  next(error);
+const { sendError } = require("../utils/apiResponse");
+
+const notFound = (req, res) => {
+  return sendError(res, {
+    statusCode: 404,
+    message: `Not Found - ${req.originalUrl}`,
+  });
 };
 
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  let message = err.message;
+  let statusCode =
+    err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  let message = err.message || "Internal server error";
 
-  // Handle Sequelize validation errors
-  if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
-    statusCode = 400;
-    message = err.errors.map(e => e.message).join(', ');
+  if (
+    err.name === "SequelizeValidationError" ||
+    err.name === "SequelizeUniqueConstraintError"
+  ) {
+    statusCode = err.name === "SequelizeUniqueConstraintError" ? 409 : 400;
+    message = err.errors.map((error) => error.message).join(", ");
   }
 
-  res.status(statusCode).json({
-    message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
-  });
+  if (process.env.NODE_ENV !== "production" && statusCode >= 500) {
+    console.error(err);
+  }
+
+  return sendError(res, { statusCode, message });
 };
 
 module.exports = { notFound, errorHandler };

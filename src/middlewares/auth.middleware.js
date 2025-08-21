@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const jwtConfig = require("../config/jwt.config");
+const { sendError } = require("../utils/apiResponse");
 
 /**
  * Middleware to verify access token from Authorization header
@@ -11,15 +12,15 @@ const authenticateToken = (req, res, next) => {
   const token = authHeader && authHeader.split(" ")[1]; // Extract token after "Bearer "
 
   if (!token) {
-    return res.status(401).json({ message: "Không tìm thấy access token" });
+    return sendError(res, 401, "Không tìm thấy access token");
   }
 
   jwt.verify(token, jwtConfig.ACCESS_SECRET, (err, decoded) => {
     if (err) {
       if (err.name === "TokenExpiredError") {
-        return res.status(401).json({ message: "Access token đã hết hạn" });
+        return sendError(res, 401, "Access token đã hết hạn");
       }
-      return res.status(403).json({ message: "Access token không hợp lệ" });
+      return sendError(res, 403, "Access token không hợp lệ");
     }
 
     // Attach decoded user info to req
@@ -36,16 +37,13 @@ const authenticateToken = (req, res, next) => {
 const requirePermission = (permissionCode) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Không tìm thấy access token" });
+      return sendError(res, 401, "Không tìm thấy access token");
     }
 
     const userPermissions = req.user.permissions || [];
 
     if (!userPermissions.includes(permissionCode)) {
-      return res.status(403).json({
-        message: "Insufficient permissions",
-        required: permissionCode,
-      });
+      return sendError(res, 403, "Insufficient permissions");
     }
 
     next();
@@ -66,7 +64,7 @@ const requireAnyPermission = (permissionCodes) => {
 
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Không tìm thấy access token" });
+      return sendError(res, 401, "Không tìm thấy access token");
     }
 
     const userPermissions = req.user.permissions || [];
@@ -75,10 +73,7 @@ const requireAnyPermission = (permissionCodes) => {
     );
 
     if (!hasAnyPermission) {
-      return res.status(403).json({
-        message: "Insufficient permissions",
-        required: permissionCodes,
-      });
+      return sendError(res, 403, "Insufficient permissions");
     }
 
     next();
@@ -99,7 +94,7 @@ const requireAllPermissions = (permissionCodes) => {
 
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Không tìm thấy access token" });
+      return sendError(res, 401, "Không tìm thấy access token");
     }
 
     const userPermissions = req.user.permissions || [];
@@ -108,10 +103,7 @@ const requireAllPermissions = (permissionCodes) => {
     );
 
     if (missingPermissions.length > 0) {
-      return res.status(403).json({
-        message: "Insufficient permissions",
-        missing: missingPermissions,
-      });
+      return sendError(res, 403, "Insufficient permissions");
     }
 
     next();
@@ -138,7 +130,7 @@ const isOwner = (resourceOwnerId, requestUserId) => {
 const requirePermissionOrOwnership = (permissionCode, resourceOwnerIdField) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Không tìm thấy access token" });
+      return sendError(res, 401, "Không tìm thấy access token");
     }
 
     const userPermissions = req.user.permissions || [];
@@ -160,10 +152,11 @@ const requirePermissionOrOwnership = (permissionCode, resourceOwnerIdField) => {
       return next();
     }
 
-    return res.status(403).json({
-      message: "Insufficient permissions or you do not own this resource",
-      required: permissionCode,
-    });
+    return sendError(
+      res,
+      403,
+      "Insufficient permissions or you do not own this resource",
+    );
   };
 };
 

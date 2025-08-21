@@ -1,4 +1,5 @@
 const adminUserService = require("../../services/admin/users.service");
+const { sendSuccess, sendError } = require("../../utils/apiResponse");
 
 /**
  * PUT /api/v1/admin/users/:id/roles
@@ -17,31 +18,28 @@ const assignRoles = async (req, res, next) => {
       currentUserId,
     );
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       statusCode: 200,
-      message: "roles updated successfully",
+      message: "Roles updated successfully",
       data: result,
     });
   } catch (error) {
     if (error.statusCode === 404) {
-      return res.status(404).json({
+      return sendError(res, {
         statusCode: 404,
         message: error.message,
-        data: null,
       });
     }
     if (error.statusCode === 400) {
-      return res.status(400).json({
+      return sendError(res, {
         statusCode: 400,
         message: error.message,
-        data: null,
       });
     }
     if (error.statusCode === 403) {
-      return res.status(403).json({
+      return sendError(res, {
         statusCode: 403,
         message: error.message,
-        data: null,
       });
     }
     console.error("Assign roles error:", error);
@@ -58,9 +56,9 @@ const listUsers = async (req, res, next) => {
   try {
     const { users, meta } = await adminUserService.listUsers(req.query);
 
-    return res.status(200).json({
-      message: "Get users successfully",
+    return sendSuccess(res, {
       statusCode: 200,
+      message: "Get users successfully",
       data: users,
       meta,
     });
@@ -81,16 +79,15 @@ const getUserDetail = async (req, res, next) => {
     const user = await adminUserService.getUserDetail(id);
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
+      return sendError(res, {
         statusCode: 404,
-        data: null,
+        message: "User not found",
       });
     }
 
-    return res.status(200).json({
-      message: "Get user detail successfully",
+    return sendSuccess(res, {
       statusCode: 200,
+      message: "Get user detail successfully",
       data: user,
     });
   } catch (error) {
@@ -117,10 +114,9 @@ const updateUser = async (req, res, next) => {
     );
 
     if (!result) {
-      return res.status(404).json({
-        message: "User not found",
+      return sendError(res, {
         statusCode: 404,
-        data: null,
+        message: "User not found",
       });
     }
 
@@ -130,17 +126,16 @@ const updateUser = async (req, res, next) => {
       ? "Update user successfully (cảnh báo: user có booking đang pending/confirmed/check_in)"
       : "Update user successfully";
 
-    return res.status(200).json({
-      message,
+    return sendSuccess(res, {
       statusCode: 200,
+      message,
       data: user,
     });
   } catch (error) {
     if (error.statusCode === 400) {
-      return res.status(400).json({
-        message: error.message,
+      return sendError(res, {
         statusCode: 400,
-        data: null,
+        message: error.message,
       });
     }
     console.error("Update user error:", error);

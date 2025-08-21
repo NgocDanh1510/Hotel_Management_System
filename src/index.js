@@ -7,6 +7,7 @@ const { connectDB } = require("./config/db");
 const { sequelize } = require("./models");
 const routes = require("./routes");
 const { errorHandler, notFound } = require("./middlewares/error.middleware");
+const { sendSuccess } = require("./utils/apiResponse");
 
 const app = express();
 
@@ -38,7 +39,7 @@ app.use("/api/v1", routes);
 
 // Base route
 app.get("/", (req, res) => {
-  res.send("API is running...");
+  sendSuccess(res, { message: "API is running..." });
 });
 
 // Error Handling
