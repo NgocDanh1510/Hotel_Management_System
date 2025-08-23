@@ -3,7 +3,7 @@ const router = express.Router();
 
 const authController = require("../controllers/auth.controller");
 const { authenticateToken } = require("../middlewares/auth.middleware");
-const validate = require("../middlewares/validate.middleware");
+const { validateSchema } = require("../middlewares/validate.middleware");
 const updateProfileSchema = require("../validations/schemaJoi/updateProfile.validation");
 
 const authRoutes = require("./auth.routes");
@@ -17,7 +17,7 @@ router.get("/me", authenticateToken, authController.getProfile);
 router.put(
   "/me",
   authenticateToken,
-  validate(updateProfileSchema),
+  validateSchema(updateProfileSchema),
   authController.updateProfile,
 );
 

@@ -5,7 +5,7 @@ const {
   authenticateToken,
   requirePermission,
 } = require("../../middlewares/auth.middleware");
-const validate = require("../../middlewares/validate.middleware");
+const { validateSchema } = require("../../middlewares/validate.middleware");
 const updateUserSchema = require("../../validations/schemaJoi/admin/updateUser.validation");
 const assignRolesSchema = require("../../validations/schemaJoi/admin/assignRoles.validation");
 
@@ -33,7 +33,7 @@ router.get("/:id", adminUsersController.getUserDetail);
 router.put(
   "/:id/roles",
   requirePermission("role.manage"),
-  validate(assignRolesSchema),
+  validateSchema(assignRolesSchema),
   adminUsersController.assignRoles,
 );
 
@@ -41,6 +41,10 @@ router.put(
  * PUT /api/v1/admin/users/:id
  * Update user (is_active, name, phone)
  */
-router.put("/:id", validate(updateUserSchema), adminUsersController.updateUser);
+router.put(
+  "/:id",
+  validateSchema(updateUserSchema),
+  adminUsersController.updateUser,
+);
 
 module.exports = router;
