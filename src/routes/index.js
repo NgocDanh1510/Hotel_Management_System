@@ -8,9 +8,11 @@ const updateProfileSchema = require("../validations/schemaJoi/updateProfile.vali
 
 const authRoutes = require("./auth.routes");
 const adminRoutes = require("./admin");
+const hotelRoutes = require("./hotel.routes");
 
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
+router.use("/hotels", hotelRoutes);
 
 // Profile endpoints
 router.get("/me", authenticateToken, authController.getProfile);
