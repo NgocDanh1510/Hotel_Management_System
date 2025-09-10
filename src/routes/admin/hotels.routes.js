@@ -11,6 +11,11 @@ const {
   createHotelSchema,
   updateHotelSchema,
 } = require("../../validations/schemaJoi/admin/hotels.validation");
+const adminRoomTypeController = require("../../controllers/admin/roomType.controller");
+const {
+  createRoomTypeSchema,
+  listRoomTypesQuerySchema,
+} = require("../../validations/schemaJoi/admin/roomType.validation");
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -60,6 +65,27 @@ router.delete(
   "/:id",
   requirePermission("hotel.manage_all"),
   adminHotelsController.deleteHotel,
+);
+
+/**
+ * GET /api/v1/admin/hotels/:hotelId/room-types
+ * List room types for a specific hotel
+ */
+router.get(
+  "/:hotelId/room-types",
+  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  adminRoomTypeController.listRoomTypes
+);
+
+/**
+ * POST /api/v1/admin/hotels/:hotelId/room-types
+ * Create a new room type for a hotel
+ */
+router.post(
+  "/:hotelId/room-types",
+  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  validateSchema(createRoomTypeSchema),
+  adminRoomTypeController.createRoomType
 );
 
 module.exports = router;
