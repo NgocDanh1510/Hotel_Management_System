@@ -333,6 +333,84 @@ class HotelService {
       rating_breakdown: ratingBreakdown,
     };
   }
+  /**
+   * Check room availability for a hotel
+   * @param {string} hotelId - Hotel ID
+   * @param {Object} query - { check_in, check_out, guests }
+   * @returns {Promise<Array>} - Available room types with counts
+   */
+  async checkAvailability(hotelId, query) {
+    const { check_in, check_out, guests } = query;
+
+    // Get all room types for this hotel with occupancy filter
+    const roomTypes = await RoomType.findAll({
+      where: {
+        hotel_id: hotelId,
+        max_occupancy: { [Op.gte]: parseInt(guests) },
+      },
+      include: [
+        {
+          model: Amenity,
+          through: { attributes: [] },
+          attributes: ["id", "name", "icon"],
+        },
+        {
+          model: Image,
+          attributes: ["id", "url", "is_primary"],
+          where: { entity_type: "room_type" },
+          required: false,
+        },
+      ],
+    });
+
+    const availabilityResult = await Promise.all(
+      roomTypes.map(async (rt) => {
+        // Find rooms of this type that are NOT in maintenance
+        const rooms = await Room.findAll({
+          where: {
+            room_type_id: rt.id,
+            status: { [Op.ne]: "maintenance" },
+          },
+          attributes: ["id"],
+        });
+
+        const roomIds = rooms.map((r) => r.id);
+        if (roomIds.length === 0) {
+          return {
+            room_type: rt.get({ plain: true }),
+            available_rooms: 0,
+            price: parseFloat(rt.base_price),
+          };
+        }
+
+        // Count booked rooms for this type and period
+        const bookedRoomsCount = await Booking.count({
+          where: {
+            room_id: roomIds,
+            status: { [Op.in]: ["confirmed", "checked_in"] },
+            [Op.not]: {
+              [Op.or]: [
+                { check_out: { [Op.lte]: check_in } },
+                { check_in: { [Op.gte]: check_out } },
+              ],
+            },
+          },
+          distinct: true,
+          col: "room_id",
+        });
+
+        const availableCount = Math.max(0, roomIds.length - bookedRoomsCount);
+
+        return {
+          room_type: rt.get({ plain: true }),
+          available_rooms: availableCount,
+          price: parseFloat(rt.base_price),
+        };
+      }),
+    );
+
+    return availabilityResult;
+  }
 }
 
 module.exports = new HotelService();

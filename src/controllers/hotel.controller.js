@@ -71,7 +71,50 @@ const getHotelDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/hotels/:hotelId/rooms/availability
+ * Check room availability for a specific hotel
+ * @access Public (no auth required)
+ */
+const checkAvailability = async (req, res, next) => {
+  try {
+    const { hotelId } = req.params;
+    const { check_in, check_out } = req.query;
+
+    // Additional check for dates
+    const today = new Date().toISOString().split("T")[0];
+    if (check_in < today) {
+      return sendError(res, {
+        statusCode: 400,
+        message: "check_in date cannot be in the past",
+      });
+    }
+
+    if (check_out <= check_in) {
+      return sendError(res, {
+        statusCode: 400,
+        message: "check_out date must be after check_in date",
+      });
+    }
+
+    const availability = await hotelService.checkAvailability(
+      hotelId,
+      req.query
+    );
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Availability checked successfully",
+      data: availability,
+    });
+  } catch (error) {
+    console.error("Check availability error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   listHotels,
   getHotelDetail,
+  checkAvailability,
 };

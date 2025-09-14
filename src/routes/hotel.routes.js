@@ -16,4 +16,11 @@ router.get("/", hotelController.listHotels);
  */
 router.get("/:slug", hotelController.getHotelDetail);
 
+/**
+ * @route GET /api/v1/hotels/:hotelId/rooms/availability
+ * @desc Check room availability for a hotel
+ * @access Public
+ */
+router.get("/:hotelId/rooms/availability", hotelController.checkAvailability);
+
 module.exports = router;
