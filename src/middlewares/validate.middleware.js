@@ -38,8 +38,33 @@ const validateRequest = (schema) => {
   };
 };
 
+/**
+ * Validate req.query against a Joi schema.
+ * Applies Joi defaults back onto req.query.
+ */
+const validateQuery = (schema) => {
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.query, {
+      abortEarly: false,
+      convert: true,
+    });
+    if (error) {
+      const errorMessage = error.details.map((detail) => detail.message);
+      return sendError(res, {
+        statusCode: 400,
+        message: "Validation failed",
+        errors: errorMessage,
+      });
+    }
+    // Write coerced + defaulted values back so controllers see them
+    req.query = value;
+    next();
+  };
+};
+
 module.exports = {
   validate,
   validateSchema,
   validateRequest,
+  validateQuery,
 };
