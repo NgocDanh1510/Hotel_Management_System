@@ -16,7 +16,6 @@ const createBooking = async (req, res, next) => {
       data: { booking },
     });
   } catch (error) {
-    // Known business errors: propagate with proper status code
     if (error.statusCode) {
       return sendError(res, {
         statusCode: error.statusCode,
@@ -24,6 +23,58 @@ const createBooking = async (req, res, next) => {
       });
     }
     console.error("Create booking error:", error);
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/bookings/:id
+ * Get full booking detail.
+ */
+const getBookingDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const booking = await bookingService.getBookingDetail(id, req.user);
+
+    return sendSuccess(res, {
+      message: "Booking detail retrieved successfully",
+      data: booking,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Get booking detail error:", error);
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/bookings/:id/cancel
+ * Cancel a booking (user-facing).
+ */
+const cancelBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await bookingService.cancelBooking(id, req.user);
+
+    return sendSuccess(res, {
+      message: result.refund_triggered
+        ? "Booking set to cancellation_pending — refund initiated"
+        : "Booking cancelled successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Cancel booking error:", error);
     next(error);
   }
 };
@@ -53,5 +104,7 @@ const listMyBookings = async (req, res, next) => {
 
 module.exports = {
   createBooking,
+  getBookingDetail,
+  cancelBooking,
   listMyBookings,
 };
