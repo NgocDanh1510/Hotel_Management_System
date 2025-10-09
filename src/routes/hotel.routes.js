@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const hotelController = require("../controllers/hotel.controller");
+const reviewController = require("../controllers/review.controller");
+const { validateQuery } = require("../middlewares/validate.middleware");
+const { listHotelReviewsQuerySchema } = require("../validations/schemaJoi/review.validation");
 
 /**
  * @route GET /api/v1/hotels
@@ -22,5 +25,16 @@ router.get("/:slug", hotelController.getHotelDetail);
  * @access Public
  */
 router.get("/:hotelId/rooms/availability", hotelController.checkAvailability);
+
+/**
+ * @route GET /api/v1/hotels/:hotelId/reviews
+ * @desc Get published reviews for a hotel
+ * @access Public
+ */
+router.get(
+  "/:hotelId/reviews",
+  validateQuery(listHotelReviewsQuerySchema),
+  reviewController.getHotelReviews
+);
 
 module.exports = router;
