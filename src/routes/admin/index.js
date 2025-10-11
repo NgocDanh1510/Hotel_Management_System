@@ -8,6 +8,7 @@ const adminHotelsRoutes = require("./hotels.routes");
 const adminRoomsRoutes = require("./rooms.routes");
 const adminBookingsRoutes = require("./bookings.routes");
 const adminReviewsRoutes = require("./review.routes");
+const adminImagesRoutes = require("./image.routes");
 
 // Admin routes
 router.use("/users", adminUsersRoutes);
@@ -17,5 +18,6 @@ router.use("/hotels", adminHotelsRoutes);
 router.use("/rooms", adminRoomsRoutes);
 router.use("/bookings", adminBookingsRoutes);
 router.use("/reviews", adminReviewsRoutes);
+router.use("/images", adminImagesRoutes);
 
 module.exports = router;
