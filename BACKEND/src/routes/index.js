@@ -18,12 +18,16 @@ const adminRoutes = require("./admin");
 const hotelRoutes = require("./hotel.routes");
 const bookingRoutes = require("./booking.routes");
 const reviewRoutes = require("./review.routes");
+const paymentRoutes = require("./payment.routes");
+const webhookRoutes = require("./webhook.routes");
 
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
 router.use("/hotels", hotelRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/reviews", reviewRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/webhooks", webhookRoutes);
 
 // Profile endpoints
 router.get("/me", authenticateToken, authController.getProfile);
