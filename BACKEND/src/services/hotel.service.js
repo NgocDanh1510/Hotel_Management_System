@@ -8,7 +8,7 @@ const {
   HotelAmenity,
   Image,
   sequelize,
-} = require("../../models");
+} = require("../models");
 const { Op, literal, col, fn } = require("sequelize");
 
 class HotelService {

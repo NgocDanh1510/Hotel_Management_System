@@ -6,7 +6,7 @@ const {
   Payment,
   User,
   sequelize,
-} = require("../../models");
+} = require("../models");
 const { Op } = require("sequelize");
 
 // ===== State machine for booking status transitions =====
@@ -89,7 +89,7 @@ class BookingService {
 
       if (guests_count > roomType.max_occupancy) {
         const error = new Error(
-          `Room type supports max ${roomType.max_occupancy} guests`
+          `Room type supports max ${roomType.max_occupancy} guests`,
         );
         error.statusCode = 400;
         throw error;
@@ -111,7 +111,9 @@ class BookingService {
         transaction,
       });
 
-      const excludedRoomIds = bookedRoomIds.map((b) => b.room_id).filter(Boolean);
+      const excludedRoomIds = bookedRoomIds
+        .map((b) => b.room_id)
+        .filter(Boolean);
 
       const whereRoom = {
         room_type_id,
@@ -158,7 +160,7 @@ class BookingService {
           special_requests: special_requests || null,
           expires_at: expiresAt,
         },
-        { transaction }
+        { transaction },
       );
 
       await transaction.commit();
@@ -197,9 +199,15 @@ class BookingService {
   async getBookingDetail(bookingId, user) {
     const booking = await Booking.findByPk(bookingId, {
       include: [
-        { model: Hotel, attributes: ["id", "name", "address", "city", "country"] },
+        {
+          model: Hotel,
+          attributes: ["id", "name", "address", "city", "country"],
+        },
         { model: Room, attributes: ["id", "room_number", "floor", "status"] },
-        { model: RoomType, attributes: ["id", "name", "max_occupancy", "base_price", "currency"] },
+        {
+          model: RoomType,
+          attributes: ["id", "name", "max_occupancy", "base_price", "currency"],
+        },
         { model: User, attributes: ["id", "name", "email", "phone"] },
         {
           model: Payment,
@@ -218,7 +226,9 @@ class BookingService {
     const perms = user.permissions || [];
     const canReadAll = perms.includes("booking.read_all");
     if (!canReadAll && booking.user_id !== user.user_id) {
-      const error = new Error("You do not have permission to view this booking");
+      const error = new Error(
+        "You do not have permission to view this booking",
+      );
       error.statusCode = 403;
       throw error;
     }
@@ -286,7 +296,9 @@ class BookingService {
     const perms = user.permissions || [];
     const canCancelAll = perms.includes("booking.cancel_all");
     if (!canCancelAll && booking.user_id !== user.user_id) {
-      const error = new Error("You do not have permission to cancel this booking");
+      const error = new Error(
+        "You do not have permission to cancel this booking",
+      );
       error.statusCode = 403;
       throw error;
     }
@@ -294,7 +306,7 @@ class BookingService {
     // Only cancel when pending or confirmed
     if (!["pending", "confirmed"].includes(booking.status)) {
       const error = new Error(
-        `Cannot cancel booking with status '${booking.status}'. Only pending or confirmed bookings can be cancelled`
+        `Cannot cancel booking with status '${booking.status}'. Only pending or confirmed bookings can be cancelled`,
       );
       error.statusCode = 400;
       throw error;
@@ -302,7 +314,7 @@ class BookingService {
 
     // Check for successful payment → cancellation_pending + refund
     const successPayments = (booking.Payments || []).filter(
-      (p) => p.status === "success"
+      (p) => p.status === "success",
     );
 
     let newStatus;
@@ -324,7 +336,7 @@ class BookingService {
             type: "refund",
             note: `Refund for cancelled booking ${bookingId}`,
           });
-        })
+        }),
       );
     } else {
       newStatus = "cancelled";
@@ -384,9 +396,7 @@ class BookingService {
     const now = new Date();
 
     const order =
-      sort === "check_in"
-        ? [["check_in", "asc"]]
-        : [["created_at", "desc"]];
+      sort === "check_in" ? [["check_in", "asc"]] : [["created_at", "desc"]];
 
     const { count, rows } = await Booking.findAndCountAll({
       where,
@@ -507,8 +517,10 @@ class BookingService {
     // Price range filter
     if (total_price_min !== undefined || total_price_max !== undefined) {
       where.total_price = {};
-      if (total_price_min !== undefined) where.total_price[Op.gte] = total_price_min;
-      if (total_price_max !== undefined) where.total_price[Op.lte] = total_price_max;
+      if (total_price_min !== undefined)
+        where.total_price[Op.gte] = total_price_min;
+      if (total_price_max !== undefined)
+        where.total_price[Op.lte] = total_price_max;
     }
 
     // Search
@@ -539,15 +551,33 @@ class BookingService {
     // Sort
     let order = [];
     switch (sort) {
-      case "created_at": order = [["created_at", "asc"]]; break;
-      case "created_at_desc": order = [["created_at", "desc"]]; break;
-      case "check_in": order = [["check_in", "asc"]]; break;
-      case "check_in_desc": order = [["check_in", "desc"]]; break;
-      case "total_price": order = [["total_price", "asc"]]; break;
-      case "total_price_desc": order = [["total_price", "desc"]]; break;
-      case "status": order = [["status", "asc"]]; break;
-      case "status_desc": order = [["status", "desc"]]; break;
-      default: order = [["created_at", "desc"]]; break;
+      case "created_at":
+        order = [["created_at", "asc"]];
+        break;
+      case "created_at_desc":
+        order = [["created_at", "desc"]];
+        break;
+      case "check_in":
+        order = [["check_in", "asc"]];
+        break;
+      case "check_in_desc":
+        order = [["check_in", "desc"]];
+        break;
+      case "total_price":
+        order = [["total_price", "asc"]];
+        break;
+      case "total_price_desc":
+        order = [["total_price", "desc"]];
+        break;
+      case "status":
+        order = [["status", "asc"]];
+        break;
+      case "status_desc":
+        order = [["status", "desc"]];
+        break;
+      default:
+        order = [["created_at", "desc"]];
+        break;
     }
 
     const { count, rows } = await Booking.findAndCountAll({
@@ -628,7 +658,7 @@ class BookingService {
       if (canManageOwn) {
         if (booking.Hotel?.owner_id !== user.user_id) {
           const error = new Error(
-            "You do not have permission to manage bookings for this hotel"
+            "You do not have permission to manage bookings for this hotel",
           );
           error.statusCode = 403;
           throw error;
@@ -647,7 +677,7 @@ class BookingService {
     if (!allowed.includes(newStatus)) {
       const error = new Error(
         `Transition from '${currentStatus}' to '${newStatus}' is not allowed. ` +
-        `Allowed transitions: ${allowed.length > 0 ? allowed.join(", ") : "none (terminal state)"}`
+          `Allowed transitions: ${allowed.length > 0 ? allowed.join(", ") : "none (terminal state)"}`,
       );
       error.statusCode = 400;
       throw error;
@@ -658,7 +688,7 @@ class BookingService {
       const today = new Date().toISOString().split("T")[0];
       if (booking.check_in > today) {
         const error = new Error(
-          `Cannot check in before the check-in date (${booking.check_in})`
+          `Cannot check in before the check-in date (${booking.check_in})`,
         );
         error.statusCode = 400;
         throw error;
@@ -669,7 +699,7 @@ class BookingService {
     let refundTriggered = false;
     if (newStatus === "cancelled") {
       const successPayments = (booking.Payments || []).filter(
-        (p) => p.status === "success"
+        (p) => p.status === "success",
       );
 
       if (successPayments.length > 0) {
@@ -688,7 +718,7 @@ class BookingService {
               type: "refund",
               note: `Refund for booking ${bookingId} status change`,
             });
-          })
+          }),
         );
       }
     }

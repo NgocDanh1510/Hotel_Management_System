@@ -1,11 +1,11 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance, { publicAxios } from "./axiosInstance";
 import type { LoginRequest, RegisterRequest, AuthResponse } from "@/types/auth";
 import type { UserProfile, UpdateProfileRequest } from "@/types/user";
 import type { ApiResponse } from "@/types/common";
 
 const authService = {
   register: async (data: RegisterRequest): Promise<void> => {
-    const response = await axiosInstance.post<ApiResponse<void>>(
+    const response = await publicAxios.post<ApiResponse<void>>(
       "/auth/register",
       data,
     );
@@ -13,7 +13,7 @@ const authService = {
   },
 
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await axiosInstance.post<ApiResponse<AuthResponse>>(
+    const response = await publicAxios.post<ApiResponse<AuthResponse>>(
       "/auth/login",
       data,
     );

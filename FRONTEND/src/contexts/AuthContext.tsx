@@ -5,13 +5,8 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import axiosInstance, { publicAxios } from "@/api/axiosInstance";
-import type {
-  AuthUser,
-  LoginRequest,
-  RegisterRequest,
-  AuthResponse,
-} from "@/types/auth";
+import authService from "@/api/authService";
+import type { AuthUser, LoginRequest, RegisterRequest } from "@/types/auth";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -32,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const checkAuth = useCallback(async () => {
     const token = localStorage.getItem("access_token");
@@ -41,10 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     try {
-      const response = await axiosInstance.get("/me");
-      setUser(response.data);
+      const response = await authService.refreshToken();
+      localStorage.setItem("access_token", response.access_token);
+      setUser(response.user);
     } catch (error) {
-      // Nếu vào đây nghĩa là request /me thất bại ngay cả sau khi interceptor đã cố gắng refresh token
       localStorage.removeItem("access_token");
       setUser(null);
     } finally {
@@ -58,13 +54,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (credentials: LoginRequest) => {
     try {
-      const response = await publicAxios.post<AuthResponse>(
-        "/auth/login",
-        credentials,
-      );
-      const { access_token, user: userData } = response.data;
-      localStorage.setItem("access_token", access_token);
-      setUser(userData);
+      const response = await authService.login(credentials);
+      localStorage.setItem("access_token", response.access_token);
+      setUser(response.user);
+      setIsAuthenticated(true);
     } catch (error) {
       throw error;
     }
@@ -72,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const register = async (data: RegisterRequest) => {
     try {
-      await publicAxios.post("/auth/register", data);
+      await authService.register(data);
     } catch (error) {
       throw error;
     }
@@ -80,31 +73,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
-      await axiosInstance.post("/auth/logout");
+      await authService.logout();
     } finally {
       localStorage.removeItem("access_token");
       setUser(null);
+      setIsAuthenticated(false);
       window.location.href = "/login";
     }
   };
 
   const logoutAll = async () => {
     try {
-      await axiosInstance.post("/auth/logout-all");
+      await authService.logoutAll();
     } finally {
       localStorage.removeItem("access_token");
       setUser(null);
+      setIsAuthenticated(false);
       window.location.href = "/login";
     }
   };
 
   const hasPermission = (code: string): boolean => {
-    if (!user) return false;
+    if (!user || !user.permissions) return false;
     return user.permissions.some((p) => p.code === code);
   };
 
   const hasRole = (role: string): boolean => {
-    if (!user) return false;
+    if (!user || !user.roles) return false;
     return user.roles.includes(role);
   };
 
@@ -112,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        isAuthenticated,
         isLoading,
         login,
         register,

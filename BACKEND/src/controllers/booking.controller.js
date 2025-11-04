@@ -1,5 +1,5 @@
-const bookingService = require("../../services/booking.service");
-const { sendSuccess, sendError } = require("../../utils/apiResponse");
+const bookingService = require("../services/booking.service");
+const { sendSuccess, sendError } = require("../utils/apiResponse");
 
 /**
  * POST /api/v1/bookings
@@ -88,7 +88,7 @@ const listMyBookings = async (req, res, next) => {
     const userId = req.user.user_id;
     const { bookings, meta } = await bookingService.listMyBookings(
       userId,
-      req.query
+      req.query,
     );
 
     return sendSuccess(res, {

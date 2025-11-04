@@ -78,5 +78,14 @@ const publicAxios: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+publicAxios.interceptors.response.use(
+  (res) => {
+    return res;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
 export default axiosInstance;
 export { publicAxios };
