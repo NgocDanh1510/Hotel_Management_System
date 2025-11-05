@@ -163,7 +163,7 @@ module.exports.getProfile = async (req, res) => {
 module.exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const result = await profileService.updateProfile(userId, req.body);
+    const result = await profileService.updateProfileDetail(userId, req.body);
 
     return sendSuccess(res, {
       statusCode: 200,

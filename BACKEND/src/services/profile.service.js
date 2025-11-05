@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Role, Booking } = require("../models");
+const { User, Role, Booking, Permission } = require("../models");
 const { Op } = require("sequelize");
 
 /**
@@ -8,6 +8,60 @@ const { Op } = require("sequelize");
  * @returns {Promise<Object>} - User profile with roles and booking summary
  */
 const getProfile = async (userId) => {
+  const user = await User.findByPk(userId, {
+    include: [
+      {
+        model: Role,
+        through: { attributes: [] }, // Don't include join table attributes
+        attributes: ["id", "name"],
+        include: [
+          {
+            model: Permission,
+            through: { attributes: [] }, // Don't include join table attributes
+            attributes: ["id", "code", "module"],
+          },
+        ],
+      },
+    ],
+    attributes: ["id", "name", "email"],
+  });
+  const roles = user.Roles.map((role) => role.name);
+
+  // lọc ra các permission từ tất cả các role, loại bỏ trùng lặp
+  const permissions = [];
+  user.Roles.forEach((role) => {
+    if (role.Permissions) {
+      role.Permissions.forEach((permission) => {
+        if (!permissions.find((p) => p.code === permission.code)) {
+          permissions.push({
+            code: permission.code,
+            module: permission.module,
+          });
+        }
+      });
+    }
+  });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    roles,
+    permissions,
+  };
+};
+/**
+ * Get current user profile
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - User profile with roles and booking summary
+ */
+const getProfileDetail = async (userId) => {
   const user = await User.findByPk(userId, {
     include: [
       {
@@ -154,6 +208,7 @@ const updatePassword = async (userId, updateData) => {
 
 module.exports = {
   getProfile,
+  getProfileDetail,
   updateProfile,
   updatePassword,
 };
