@@ -1,54 +1,59 @@
 import axiosInstance, { publicAxios } from "./axiosInstance";
-import type { LoginRequest, RegisterRequest, AuthResponse } from "@/types/auth";
+import type {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  AuthUser,
+} from "@/types/auth";
 import type { UserProfile, UpdateProfileRequest } from "@/types/user";
 import type { ApiResponse } from "@/types/common";
 
 const authService = {
-  register: async (data: RegisterRequest): Promise<void> => {
+  register: async (data: RegisterRequest) => {
     const response = await publicAxios.post<ApiResponse<void>>(
       "/auth/register",
       data,
     );
-    return response.data.data;
+    return response.data;
   },
 
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
+  login: async (data: LoginRequest) => {
     const response = await publicAxios.post<ApiResponse<AuthResponse>>(
       "/auth/login",
       data,
     );
-    return response.data.data;
+    return response.data;
   },
 
-  logout: async (): Promise<void> => {
+  logout: async () => {
     const response =
       await axiosInstance.post<ApiResponse<void>>("/auth/logout");
-    return response.data.data;
+    return response.data;
   },
 
-  logoutAll: async (): Promise<void> => {
+  logoutAll: async () => {
     const response =
       await axiosInstance.post<ApiResponse<void>>("/auth/logout-all");
-    return response.data.data;
+    return response.data;
   },
 
-  refreshToken: async (): Promise<AuthResponse> => {
+  refreshToken: async () => {
     const response =
       await axiosInstance.post<ApiResponse<AuthResponse>>("/auth/refresh");
-    return response.data.data;
+    return response.data;
   },
 
-  getMe: async (): Promise<UserProfile> => {
-    const response = await axiosInstance.get<ApiResponse<UserProfile>>("/me");
-    return response.data.data;
+  getMe: async () => {
+    const response = await axiosInstance.get<ApiResponse<AuthUser>>("/me");
+    return response.data;
   },
 
-  updateMe: async (data: UpdateProfileRequest): Promise<UserProfile> => {
+  updateMe: async (data: UpdateProfileRequest) => {
     const response = await axiosInstance.put<ApiResponse<UserProfile>>(
       "/me",
       data,
     );
-    return response.data.data;
+    return response.data;
   },
 };
 

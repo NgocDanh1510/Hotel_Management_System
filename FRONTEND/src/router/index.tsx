@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import HomePage from "@/pages/HomePage";
-import LoginPage from "@/pages/LoginPage";
-import RegisterPage from "@/pages/RegisterPage";
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
 import HotelListPage from "@/pages/HotelListPage";
 import HotelDetailPage from "@/pages/HotelDetailPage";
 import ForbiddenPage from "@/pages/ForbiddenPage";

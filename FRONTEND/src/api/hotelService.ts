@@ -38,45 +38,38 @@ interface GetHotelReviewsParams {
 }
 
 const hotelService = {
-  getHotels: async (
-    params: GetHotelsParams,
-  ): Promise<{ data: HotelListItem[]; meta?: PaginationMeta }> => {
+  getHotels: async (params: GetHotelsParams) => {
     const response = await publicAxios.get<ApiResponse<HotelListItem[]>>(
       "/hotels",
       { params },
     );
-    return { data: response.data.data, meta: response.data.meta };
+    return response.data;
   },
 
-  getHotelBySlug: async (
-    slug: string,
-  ): Promise<{ data: HotelDetail; meta?: PaginationMeta }> => {
+  getHotelBySlug: async (slug: string) => {
     const response = await publicAxios.get<ApiResponse<HotelDetail>>(
       `/hotels/${slug}`,
     );
-    return { data: response.data.data, meta: response.data.meta };
+    return response.data;
   },
 
   getHotelAvailability: async (
     hotelId: string,
     params: GetHotelAvailabilityParams,
-  ): Promise<{ data: RoomAvailability[]; meta?: PaginationMeta }> => {
+  ) => {
     const response = await publicAxios.get<ApiResponse<RoomAvailability[]>>(
       `/hotels/${hotelId}/rooms/availability`,
       { params },
     );
-    return { data: response.data.data, meta: response.data.meta };
+    return response.data;
   },
 
-  getHotelReviews: async (
-    hotelId: string,
-    params: GetHotelReviewsParams,
-  ): Promise<{ data: Review[]; meta?: PaginationMeta }> => {
+  getHotelReviews: async (hotelId: string, params: GetHotelReviewsParams) => {
     const response = await publicAxios.get<ApiResponse<Review[]>>(
       `/hotels/${hotelId}/reviews`,
       { params },
     );
-    return { data: response.data.data, meta: response.data.meta };
+    return response.data;
   },
 };
 

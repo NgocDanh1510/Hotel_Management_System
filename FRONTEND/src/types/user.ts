@@ -1,3 +1,5 @@
+export interface Users {}
+
 export interface UserRole {
   id: string;
   name: string;

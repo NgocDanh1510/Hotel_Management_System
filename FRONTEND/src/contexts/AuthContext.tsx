@@ -7,13 +7,13 @@ import React, {
 } from "react";
 import authService from "@/api/authService";
 import type { AuthUser, LoginRequest, RegisterRequest } from "@/types/auth";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   hasPermission: (code: string) => boolean;
@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoadingCheckAuth, setIsLoadingCheckAuth] = useState<boolean>(true);
 
   const checkAuth = useCallback(async () => {
     const token = localStorage.getItem("access_token");
@@ -37,14 +38,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     try {
-      const response = await authService.refreshToken();
-      localStorage.setItem("access_token", response.access_token);
-      setUser(response.user);
+      const response = await authService.getMe();
+      if (response.statusCode === 200) {
+        setUser(response.data);
+        setIsAuthenticated(true);
+      }
     } catch (error) {
       localStorage.removeItem("access_token");
       setUser(null);
     } finally {
       setIsLoading(false);
+      setIsLoadingCheckAuth(false);
     }
   }, []);
 
@@ -55,22 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (credentials: LoginRequest) => {
     try {
       const response = await authService.login(credentials);
-      localStorage.setItem("access_token", response.access_token);
-      setUser(response.user);
+      localStorage.setItem("access_token", response.data.access_token);
+      setUser(response.data.user);
       setIsAuthenticated(true);
     } catch (error) {
       throw error;
     }
   };
-
-  const register = async (data: RegisterRequest) => {
-    try {
-      await authService.register(data);
-    } catch (error) {
-      throw error;
-    }
-  };
-
   const logout = async () => {
     try {
       await authService.logout();
@@ -104,21 +99,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        login,
-        register,
-        logout,
-        logoutAll,
-        hasPermission,
-        hasRole,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <>
+      {isLoadingCheckAuth ? (
+        <LoadingSpinner />
+      ) : (
+        <AuthContext.Provider
+          value={{
+            user,
+            isAuthenticated,
+            isLoading,
+            login,
+
+            logout,
+            logoutAll,
+            hasPermission,
+            hasRole,
+          }}
+        >
+          {children}
+        </AuthContext.Provider>
+      )}
+    </>
   );
 };
 
