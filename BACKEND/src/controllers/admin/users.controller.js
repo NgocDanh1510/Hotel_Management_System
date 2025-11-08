@@ -8,13 +8,15 @@ const { sendSuccess, sendError } = require("../../utils/apiResponse");
  */
 const assignRoles = async (req, res, next) => {
   try {
+    console.log("ok");
+
     const { id } = req.params;
     const currentUserId = req.user.user_id;
-    const { role_ids, role_names } = req.body;
+    const { role_ids } = req.body;
 
     const result = await adminUserService.assignRoles(
       id,
-      { role_ids, role_names },
+      { role_ids },
       currentUserId,
     );
 
@@ -95,6 +97,36 @@ const getUserDetail = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * POST /api/v1/admin/users
+ * Create a new user
+ * Permission required: user.manage
+ */
+const createUser = async (req, res, next) => {
+  try {
+    const { name, email, phone, password, role_ids } = req.body;
+    const currentUserId = req.user.user_id;
+    const result = await adminUserService.createUser(
+      { name, email, phone, password, role_ids },
+      currentUserId,
+    );
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      message: "User created successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return sendError(res, {
+        statusCode: 400,
+        message: error.message,
+      });
+    }
+    console.error("Create user error:", error);
+    next(error);
+  }
+};
 
 /**
  * PUT /api/v1/admin/users/:id
@@ -143,9 +175,38 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+//[PUT] /api/v1/admin/users/delete/:id
+//Soft delete a user (set deleted_at)
+const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.user_id;
+
+    const result = await adminUserService.deleteUser(id, currentUserId);
+
+    if (!result) {
+      return sendError(res, {
+        statusCode: 404,
+        message: "User not found",
+      });
+    }
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   assignRoles,
   listUsers,
   getUserDetail,
   updateUser,
+  deleteUser,
+
+  createUser,
 };

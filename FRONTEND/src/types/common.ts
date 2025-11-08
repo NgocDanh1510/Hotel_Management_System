@@ -7,8 +7,14 @@ export interface PaginationMeta {
 }
 
 export interface ApiResponse<T> {
+  success: boolean;
   statusCode: number;
   message: string;
   data: T;
   meta?: PaginationMeta;
 }
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  meta: PaginationMeta;
+}
+

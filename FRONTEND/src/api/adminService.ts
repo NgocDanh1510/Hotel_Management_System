@@ -1,41 +1,65 @@
-import type { ApiResponse } from "@/types/common";
+import type { ApiResponse, PaginatedResponse } from "@/types/common";
 import axiosInstance from "./axiosInstance";
-import type { UserProfile } from "@/types/user";
+import type { AdminUserDetail, UsersListItem } from "@/types/user";
 
 export const adminService = {
   // User management
   getUsers: async (params?: {
     q?: string;
+    role_id?: string;
+    role_name?: string;
     is_active?: boolean;
-    role?: string;
-    sort?: string;
-    offset?: number;
+    from?: string;
+    to?: string;
+    page?: number;
     limit?: number;
+    sort?: string;
   }) => {
-    const response = await axiosInstance.get<ApiResponse<UserProfile>>(
+    const response = await axiosInstance.get<PaginatedResponse<UsersListItem>>(
       "/admin/users",
       { params },
     );
     return response.data;
   },
-  getUserById: async (id: string | number) => {
-    const response = await axiosInstance.get(`/admin/users/${id}`);
+  getUserById: async (id: string) => {
+    const response = await axiosInstance.get<ApiResponse<AdminUserDetail>>(`/admin/users/${id}`);
     return response.data;
   },
   updateUser: async (
-    id: string | number,
+    id: string,
     data: { is_active?: boolean; name?: string; phone?: string },
   ) => {
-    const response = await axiosInstance.put(`/admin/users/${id}`, data);
+    const response = await axiosInstance.put<ApiResponse<UsersListItem>>(`/admin/users/${id}`, data);
     return response.data;
   },
   updateUserRoles: async (
-    id: string | number,
-    data: { role_ids?: number[] } | { role_names?: string[] },
+    id: string,
+    data: { role_ids?: string[] } | { role_names?: string[] },
   ) => {
-    const response = await axiosInstance.put(`/admin/users/${id}/roles`, data);
+    const response = await axiosInstance.put<ApiResponse<any>>(`/admin/users/${id}/roles`, data);
     return response.data;
   },
+  createUser: async (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    role_ids?: string[];
+  }) => {
+    const response = await axiosInstance.post<ApiResponse<UsersListItem>>(
+      "/admin/users",
+      data,
+    );
+    return response.data;
+  },
+  deleteUser: async (id: string) => {
+    const response = await axiosInstance.delete<ApiResponse<any>>(
+      `/admin/users/delete/${id}`,
+    );
+    return response.data;
+  },
+
+
 
   // Hotel management
   getAdminHotels: async (params?: any) => {

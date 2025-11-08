@@ -1,8 +1,27 @@
-export interface Users {}
-
 export interface UserRole {
   id: string;
   name: string;
+}
+
+export interface UsersListItem {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  roles: UserRole[];
+  created_at: string;
+}
+
+export interface AdminUserStats {
+  total_bookings: number;
+  total_spent: number;
+  last_booking_at: string | null;
+  avg_rating_given: number;
+}
+
+export interface AdminUserDetail extends UsersListItem {
+  stats: AdminUserStats;
 }
 
 export interface BookingSummary {
@@ -26,3 +45,4 @@ export interface UpdateProfileRequest {
   current_password?: string;
   new_password?: string;
 }
+

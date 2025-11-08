@@ -8,6 +8,7 @@ const {
 const { validateSchema } = require("../../middlewares/validate.middleware");
 const updateUserSchema = require("../../validations/schemaJoi/admin/updateUser.validation");
 const assignRolesSchema = require("../../validations/schemaJoi/admin/assignRoles.validation");
+const createUserSchema = require("../../validations/schemaJoi/admin/createUser.validation");
 
 // All routes require authentication and user.manage permission
 router.use(authenticateToken);
@@ -24,6 +25,16 @@ router.get("/", adminUsersController.listUsers);
  * Get user detail with stats
  */
 router.get("/:id", adminUsersController.getUserDetail);
+
+/**
+ * [POST] /api/v1/admin/users
+ * Create a new user
+ */
+router.post(
+  "/",
+  validateSchema(createUserSchema),
+  adminUsersController.createUser,
+);
 
 /**
  * PUT /api/v1/admin/users/:id/roles
@@ -46,5 +57,11 @@ router.put(
   validateSchema(updateUserSchema),
   adminUsersController.updateUser,
 );
+
+/**
+ * DELETE /api/v1/admin/users/delete/:id
+ * Soft delete a user (set deleted_at)
+ */
+router.delete("/delete/:id", adminUsersController.deleteUser);
 
 module.exports = router;

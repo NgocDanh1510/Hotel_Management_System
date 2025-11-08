@@ -25,7 +25,7 @@ const listUsers = async (query) => {
   const offset = (pageNum - 1) * limitNum;
 
   // Build where clause
-  const where = {};
+  const where = { deleted_at: null };
 
   if (q) {
     where[Op.or] = [
@@ -186,6 +186,68 @@ const getUserDetail = async (id) => {
 };
 
 /**
+ * Create a new user
+ * @param {Object} userData - User data (name, email, phone, password, role_ids)
+ * @param {string} currentUserId - ID of the admin performing the creation
+ * @returns {Promise<Object>} - Created user details
+ */
+const createUser = async (userData, currentUserId) => {
+  const { name, email, phone, password, role_ids } = userData;
+
+  // Check if email already exists
+  const existingUser = await User.findOne({ where: { email } });
+  if (existingUser) {
+    const error = new Error("Email đã tồn tại");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Create user
+  const newUser = await User.create(
+    { name, email, phone, password },
+    { fields: ["name", "email", "phone", "password"] },
+  );
+
+  // Assign roles if provided
+  if (role_ids && role_ids.length > 0) {
+    const roles = await Role.findAll({
+      where: { id: role_ids },
+      attributes: ["id", "name"],
+    });
+
+    if (roles.length !== role_ids.length) {
+      const error = new Error("One or more roles do not exist");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await newUser.addRoles(roles);
+  }
+
+  // Fetch created user with roles
+  const createdUser = await User.findByPk(newUser.id, {
+    include: [
+      {
+        model: Role,
+        through: { attributes: [] },
+        attributes: ["id", "name"],
+      },
+    ],
+    attributes: ["id", "name", "email", "phone", "is_active", "created_at"],
+  });
+
+  return {
+    id: createdUser.id,
+    name: createdUser.name,
+    email: createdUser.email,
+    phone: createdUser.phone,
+    is_active: createdUser.is_active,
+    roles: createdUser.Roles.map((r) => ({ id: r.id, name: r.name })),
+    created_at: createdUser.created_at,
+  };
+};
+
+/**
  * Update user profile
  * @param {string} id - User ID
  * @param {Object} updateData - Data to update
@@ -257,7 +319,7 @@ const updateUser = async (id, updateData, currentUserId) => {
  * @returns {Promise<Object>} - Updated user with roles
  */
 const assignRoles = async (targetUserId, roleData, currentUserId) => {
-  const { role_ids, role_names } = roleData;
+  const { role_ids } = roleData;
 
   // Get target user with current roles
   const targetUser = await User.findByPk(targetUserId, {
@@ -290,16 +352,7 @@ const assignRoles = async (targetUserId, roleData, currentUserId) => {
       throw error;
     }
   } else {
-    rolesToAssign = await Role.findAll({
-      where: { name: role_names },
-      attributes: ["id", "name"],
-    });
-
-    if (rolesToAssign.length !== role_names.length) {
-      const error = new Error("One or more roles do not exist");
-      error.statusCode = 400;
-      throw error;
-    }
+    rolesToAssign = [];
   }
 
   // Check if user is trying to remove all roles from themselves
@@ -360,10 +413,38 @@ const assignRoles = async (targetUserId, roleData, currentUserId) => {
     throw error;
   }
 };
+//[DELETE] /api/v1/admin/users/delete/:id
+//Soft delete a user (set deleted_at)
+const deleteUser = async (id, currentUserId) => {
+  if (String(id) === String(currentUserId)) {
+    const error = new Error("Cannot delete yourself");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findOne({
+    where: {
+      id,
+      deleted_at: null,
+    },
+  });
+
+  if (!user) {
+    const error = new Error("User not found or already deleted");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await user.destroy();
+
+  return user;
+};
 
 module.exports = {
   listUsers,
   getUserDetail,
   updateUser,
   assignRoles,
+  deleteUser,
+  createUser,
 };

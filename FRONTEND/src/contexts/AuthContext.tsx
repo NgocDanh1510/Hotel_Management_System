@@ -18,6 +18,7 @@ interface AuthContextType {
   logoutAll: () => Promise<void>;
   hasPermission: (code: string) => boolean;
   hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,7 +29,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoadingCheckAuth, setIsLoadingCheckAuth] = useState<boolean>(true);
 
   const checkAuth = useCallback(async () => {
     const token = localStorage.getItem("access_token");
@@ -48,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(null);
     } finally {
       setIsLoading(false);
-      setIsLoadingCheckAuth(false);
     }
   }, []);
 
@@ -97,10 +96,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user || !user.roles) return false;
     return user.roles.includes(role);
   };
+  const hasAnyRole = (roles: string[]): boolean => {
+    if (!user?.roles) return false;
+    return user.roles.some((r) => roles.includes(r));
+  };
 
   return (
     <>
-      {isLoadingCheckAuth ? (
+      {isLoading ? (
         <LoadingSpinner />
       ) : (
         <AuthContext.Provider
@@ -114,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             logoutAll,
             hasPermission,
             hasRole,
+            hasAnyRole,
           }}
         >
           {children}
