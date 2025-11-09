@@ -26,6 +26,6 @@ dist-ssr
 #tool
 *.py
 #doc
-prompt.md
+api_document.md
 
 .agents

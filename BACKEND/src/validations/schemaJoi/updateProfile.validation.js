@@ -3,7 +3,7 @@ const Joi = require("joi");
 const updateProfileSchema = Joi.object({
   name: Joi.string().min(2).max(100).optional(),
   phone: Joi.string()
-    .pattern(/^\+?[1-9]\d{1,14}$/)
+    .pattern(/^0\d{1,10}$/)
     .optional()
     .messages({
       "string.pattern.base": "Phone number is invalid",

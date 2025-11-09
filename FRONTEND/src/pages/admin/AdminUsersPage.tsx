@@ -19,7 +19,7 @@ const AdminUsersPage: React.FC = () => {
     q: "",
     role_name: "",
     is_active: "" as string | boolean,
-    sort: "created_desc",
+    sort: "created_at_desc",
     page: 1,
     limit: 10,
   });
@@ -46,7 +46,7 @@ const AdminUsersPage: React.FC = () => {
     role_ids: [] as string[],
   });
 
-  const [selectedRoleNames, setSelectedRoleNames] = useState<string[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const timerSearch = useRef(null);
   // --- API Calls ---
   const fetchUsers = useCallback(async () => {
@@ -138,14 +138,14 @@ const AdminUsersPage: React.FC = () => {
 
   const handleOpenRoles = (user: UsersListItem) => {
     setSelectedUser(user as any);
-    setSelectedRoleNames(user.roles.map((r) => r.name));
+    setSelectedRoleIds(user.roles.map((r) => r.id));
     setIsRoleModalOpen(true);
   };
 
   const handleUpdateRoles = async () => {
     if (!selectedUser) return;
     const res = await adminService.updateUserRoles(selectedUser.id, {
-      role_names: selectedRoleNames,
+      role_ids: selectedRoleIds,
     });
     if (res.statusCode === 200) {
       setIsRoleModalOpen(false);
@@ -225,8 +225,10 @@ const AdminUsersPage: React.FC = () => {
             setFilters((prev) => ({ ...prev, sort: e.target.value, page: 1 }))
           }
         >
-          <option value="created_desc">Newest</option>
+          <option value="created_at_desc">Newest</option>
+          <option value="created_at_asc">Oldest</option>
           <option value="name_asc">Name A-Z</option>
+          <option value="name_desc">Name Z-A</option>
         </select>
       </div>
 
@@ -235,6 +237,7 @@ const AdminUsersPage: React.FC = () => {
         <table className="w-full text-left">
           <thead className="bg-gray-200">
             <tr>
+              <th>STT</th>
               <th className="p-2">Name</th>
               <th className="p-2">Email</th>
               <th className="p-2">Roles</th>
@@ -250,8 +253,9 @@ const AdminUsersPage: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              users.map((user, index) => (
                 <tr key={user.id} className="border-t hover:bg-gray-50">
+                  <td className="p-2">{index + 1}</td>
                   <td className="p-2 font-medium">{user.name}</td>
                   <td className="p-2">{user.email}</td>
                   <td className="p-2">
@@ -510,12 +514,12 @@ const AdminUsersPage: React.FC = () => {
                 >
                   <input
                     type="checkbox"
-                    checked={selectedRoleNames.includes(role.name)}
+                    checked={selectedRoleIds.includes(role.id)}
                     onChange={() => {
-                      setSelectedRoleNames((prev) =>
-                        prev.includes(role.name)
-                          ? prev.filter((r) => r !== role.name)
-                          : [...prev, role.name],
+                      setSelectedRoleIds((prev) =>
+                        prev.includes(role.id)
+                          ? prev.filter((r) => r !== role.id)
+                          : [...prev, role.id],
                       );
                     }}
                   />

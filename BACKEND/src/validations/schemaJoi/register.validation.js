@@ -13,7 +13,7 @@ const registerSchema = Joi.object({
     }),
   name: Joi.string().min(2).max(100).required(),
   phone: Joi.string()
-    .pattern(/^\+?[1-9]\d{1,14}$/)
+    .pattern(/^0\d{1,10}$/)
     .optional()
     .messages({
       "string.pattern.base": "Số điện thoại không hợp lệ",

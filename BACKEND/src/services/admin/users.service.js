@@ -1,5 +1,6 @@
 const { User, Role, Booking, Review, sequelize } = require("../../models");
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt");
 
 /**
  * List all users with filtering, searching, and pagination
@@ -91,7 +92,7 @@ const listUsers = async (query) => {
     offset: offset,
     distinct: true,
     attributes: ["id", "name", "email", "phone", "is_active", "created_at"],
-    subQuery: false,
+    // subQuery: false,
   });
 
   const data = rows.map((user) => ({
@@ -201,12 +202,18 @@ const createUser = async (userData, currentUserId) => {
     error.statusCode = 400;
     throw error;
   }
+  const hashedPassword = await bcrypt.hash(password, 12);
 
   // Create user
-  const newUser = await User.create(
-    { name, email, phone, password },
-    { fields: ["name", "email", "phone", "password"] },
-  );
+  const newUser = await User.create({
+    name,
+    email,
+    phone,
+    password_hash: hashedPassword,
+    is_active: true,
+    failed_login_attempts: 0,
+    locked_until: null,
+  });
 
   // Assign roles if provided
   if (role_ids && role_ids.length > 0) {
