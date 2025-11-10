@@ -32,12 +32,8 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING(500),
         allowNull: true,
       },
-      city: {
-        type: DataTypes.STRING(100),
-        allowNull: true,
-      },
-      country: {
-        type: DataTypes.STRING(100),
+      district_id: {
+        type: DataTypes.UUID,
         allowNull: true,
       },
       star_rating: {

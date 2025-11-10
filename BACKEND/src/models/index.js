@@ -17,7 +17,8 @@ const Booking = require("./booking.model")(sequelize);
 const Payment = require("./payment.model")(sequelize);
 const Review = require("./review.model")(sequelize);
 const Image = require("./image.model")(sequelize);
-
+const District = require("./district.model")(sequelize);
+const City = require("./city.model")(sequelize);
 // === ASSOCIATIONS ===
 
 // User
@@ -52,6 +53,7 @@ Role.belongsToMany(User, {
 
 // Hotel
 Hotel.belongsTo(User, { as: "owner", foreignKey: "owner_id" });
+Hotel.belongsTo(District, { foreignKey: "district_id" });
 Hotel.hasMany(RoomType, { foreignKey: "hotel_id" });
 Hotel.hasMany(Room, { foreignKey: "hotel_id" });
 Hotel.hasMany(Booking, { foreignKey: "hotel_id" });
@@ -106,6 +108,21 @@ Payment.belongsTo(User, { foreignKey: "user_id" });
 Review.belongsTo(Booking, { foreignKey: "booking_id" });
 Review.belongsTo(User, { foreignKey: "user_id" });
 Review.belongsTo(Hotel, { foreignKey: "hotel_id" });
+
+// City
+City.hasMany(District, {
+  foreignKey: "city_id",
+});
+
+// District
+District.belongsTo(City, {
+  foreignKey: "city_id",
+});
+
+District.hasMany(Hotel, {
+  foreignKey: "district_id",
+});
+
 // Export everything
 module.exports = {
   sequelize,
@@ -125,4 +142,6 @@ module.exports = {
   Payment,
   Review,
   Image,
+  District,
+  City,
 };
