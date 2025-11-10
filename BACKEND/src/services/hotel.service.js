@@ -7,6 +7,8 @@ const {
   Amenity,
   HotelAmenity,
   Image,
+  District,
+  City,
   sequelize,
 } = require("../models");
 const { Op, literal, col, fn } = require("sequelize");
@@ -18,8 +20,8 @@ class HotelService {
   async listHotels(query) {
     const {
       q,
-      city,
-      country,
+      district_id,
+      city_id,
       star_rating_min,
       star_rating_max,
       price_min,
@@ -33,21 +35,27 @@ class HotelService {
       limit = 12,
     } = query;
 
-    const where = { is_active: true };
+    const where = { is_active: true, status: "active" };
     const include = [];
 
-    // Search by name, city, address
+    // Search by name, address
     if (q) {
       where[Op.or] = [
         { name: { [Op.iLike]: `%${q}%` } },
-        { city: { [Op.iLike]: `%${q}%` } },
         { address: { [Op.iLike]: `%${q}%` } },
       ];
     }
 
-    // City and country filters
-    if (city) where.city = city;
-    if (country) where.country = country;
+    // District and city filters
+    if (district_id) where.district_id = district_id;
+    if (city_id) {
+      include.push({
+        model: District,
+        where: { city_id },
+        attributes: [],
+        required: true,
+      });
+    }
 
     // Star rating filter
     if (star_rating_min || star_rating_max) {
@@ -149,7 +157,14 @@ class HotelService {
     // Get hotels with aggregations
     let hotels = await Hotel.findAll({
       where,
-      include,
+      include: [
+        ...include,
+        {
+          model: District,
+          attributes: ["id", "name"],
+          include: [{ model: City, attributes: ["id", "name"] }],
+        },
+      ],
       order,
       limit: parseInt(limit),
       offset,
@@ -190,8 +205,8 @@ class HotelService {
           id: hotel.id,
           name: hotel.name,
           slug: hotel.slug,
-          city: hotel.city,
-          country: hotel.country,
+          district: hotel.District?.name,
+          city: hotel.District?.City?.name,
           star_rating: parseFloat(hotel.star_rating) || 0,
           avg_rating: parseFloat(hotel.avg_rating) || 0,
           review_count: hotel.review_count || 0,
@@ -228,8 +243,13 @@ class HotelService {
    */
   async getHotelDetail(slug) {
     const hotel = await Hotel.findOne({
-      where: { slug, is_active: true },
+      where: { slug, is_active: true, status: "active" },
       include: [
+        {
+          model: District,
+          attributes: ["id", "name"],
+          include: [{ model: City, attributes: ["id", "name"] }],
+        },
         {
           model: RoomType,
           attributes: ["id", "name", "max_occupancy", "base_price"],
@@ -311,8 +331,8 @@ class HotelService {
         slug: hotel.slug,
         description: hotel.description,
         address: hotel.address,
-        city: hotel.city,
-        country: hotel.country,
+        district: hotel.District?.name,
+        city: hotel.District?.City?.name,
         star_rating: parseFloat(hotel.star_rating) || 0,
         contact_email: hotel.contact_email,
         contact_phone: hotel.contact_phone,

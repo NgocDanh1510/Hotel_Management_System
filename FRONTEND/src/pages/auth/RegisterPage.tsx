@@ -43,8 +43,8 @@ const RegisterPage: React.FC = () => {
         "Password must contain at least 1 uppercase letter, 1 digit, and 1 special character";
     }
 
-    if (phone && !/^\+84\d{9}$/.test(phone)) {
-      newErrors.phone = "Phone must be in +84xxxxxxxxx format";
+    if (phone && !/^0\d{1,10}$/.test(phone)) {
+      newErrors.phone = "Phone must be in 0xxxxxxxxx format";
     }
 
     setErrors(newErrors);
@@ -76,7 +76,9 @@ const RegisterPage: React.FC = () => {
         setErrors({ general: "Email already registered" });
       } else {
         setErrors({
-          general: err.response?.data?.message || "Registration failed. Please try again.",
+          general:
+            err.response?.data?.message ||
+            "Registration failed. Please try again.",
         });
       }
     } finally {
@@ -95,7 +97,10 @@ const RegisterPage: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Full Name
               </label>
               <input
@@ -111,11 +116,16 @@ const RegisterPage: React.FC = () => {
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 placeholder="John Doe"
               />
-              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <input
@@ -131,11 +141,16 @@ const RegisterPage: React.FC = () => {
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 placeholder="you@example.com"
               />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Phone Number (Optional)
               </label>
               <input
@@ -148,13 +163,18 @@ const RegisterPage: React.FC = () => {
                 className={`mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border ${
                   errors.phone ? "border-red-300" : "border-gray-300"
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                placeholder="+84xxxxxxxxx"
+                placeholder="0xxxxxxxxx"
               />
-              {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+              {errors.phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <input
@@ -170,7 +190,9 @@ const RegisterPage: React.FC = () => {
                 } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 placeholder="••••••••"
               />
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
           </div>
 
@@ -178,7 +200,9 @@ const RegisterPage: React.FC = () => {
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">{errors.general}</h3>
+                  <h3 className="text-sm font-medium text-red-800">
+                    {errors.general}
+                  </h3>
                 </div>
               </div>
             </div>
@@ -188,7 +212,9 @@ const RegisterPage: React.FC = () => {
             <div className="rounded-md bg-green-50 p-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">{successMsg}</h3>
+                  <h3 className="text-sm font-medium text-green-800">
+                    {successMsg}
+                  </h3>
                 </div>
               </div>
             </div>
@@ -206,7 +232,10 @@ const RegisterPage: React.FC = () => {
         </form>
         <div className="text-sm text-center">
           <span className="text-gray-600">Already have an account? </span>
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link
+            to="/login"
+            className="font-medium text-blue-600 hover:text-blue-500"
+          >
             Sign in here
           </Link>
         </div>

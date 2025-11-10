@@ -5,6 +5,8 @@ const {
   Booking,
   sequelize,
   Amenity,
+  District,
+  City,
 } = require("../../models");
 const { Op, literal, col, fn } = require("sequelize");
 
@@ -142,9 +144,9 @@ class AdminHotelService {
     const {
       q,
       is_active,
+      status,
       owner_id,
-      city,
-      country,
+      district_id,
       star_rating_min,
       star_rating_max,
       created_at_from,
@@ -163,19 +165,19 @@ class AdminHotelService {
       where.is_active = is_active === true || is_active === "true";
     }
 
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
     // Filter by owner_id
     if (owner_id) {
       where.owner_id = owner_id;
     }
 
-    // Filter by city
-    if (city) {
-      where.city = city;
-    }
-
-    // Filter by country
-    if (country) {
-      where.country = country;
+    // Filter by district_id
+    if (district_id) {
+      where.district_id = district_id;
     }
 
     // Filter by star rating range
@@ -201,12 +203,11 @@ class AdminHotelService {
       }
     }
 
-    // Search by name, slug, city
+    // Search by name, slug
     if (q) {
       where[Op.or] = [
         { name: { [Op.iLike]: `%${q}%` } },
         { slug: { [Op.iLike]: `%${q}%` } },
-        { city: { [Op.iLike]: `%${q}%` } },
       ];
     }
 
@@ -228,7 +229,19 @@ class AdminHotelService {
         break;
     }
 
-    const include = [];
+    const include = [
+      {
+        model: District,
+        attributes: ["id", "name"],
+        include: [
+          {
+            model: City,
+            attributes: ["id", "name"],
+          },
+        ],
+      },
+    ];
+
     if (sort === "total_bookings") {
       include.push({
         model: Booking,
@@ -250,13 +263,13 @@ class AdminHotelService {
         "slug",
         "description",
         "address",
-        "city",
-        "country",
+        "district_id",
         "star_rating",
         "contact_email",
         "contact_phone",
         "owner_id",
         "is_active",
+        "status",
         "avg_rating",
         "review_count",
         "created_at",
@@ -271,13 +284,15 @@ class AdminHotelService {
       slug: hotel.slug,
       description: hotel.description,
       address: hotel.address,
-      city: hotel.city,
-      country: hotel.country,
+      district_id: hotel.district_id,
+      district: hotel.District?.name,
+      city: hotel.District?.City?.name,
       star_rating: hotel.star_rating,
       contact_email: hotel.contact_email,
       contact_phone: hotel.contact_phone,
       owner_id: hotel.owner_id,
       is_active: hotel.is_active,
+      status: hotel.status,
       avg_rating: hotel.avg_rating,
       review_count: hotel.review_count,
       created_at: hotel.created_at,
@@ -399,7 +414,7 @@ class AdminHotelService {
     }
 
     // Soft delete
-    await hotel.update({ is_active: false });
+    await hotel.destroy();
 
     return {
       id: hotel.id,

@@ -15,28 +15,35 @@ export const adminService = {
     limit?: number;
     sort?: string;
   }) => {
-    const response = await axiosInstance.get<PaginatedResponse<UsersListItem>>(
-      "/admin/users",
-      { params },
-    );
+    const response = await axiosInstance.get<
+      PaginatedResponse<UsersListItem[]>
+    >("/admin/users", { params });
     return response.data;
   },
   getUserById: async (id: string) => {
-    const response = await axiosInstance.get<ApiResponse<AdminUserDetail>>(`/admin/users/${id}`);
+    const response = await axiosInstance.get<ApiResponse<AdminUserDetail>>(
+      `/admin/users/${id}`,
+    );
     return response.data;
   },
   updateUser: async (
     id: string,
     data: { is_active?: boolean; name?: string; phone?: string },
   ) => {
-    const response = await axiosInstance.put<ApiResponse<UsersListItem>>(`/admin/users/${id}`, data);
+    const response = await axiosInstance.put<ApiResponse<UsersListItem>>(
+      `/admin/users/${id}`,
+      data,
+    );
     return response.data;
   },
   updateUserRoles: async (
     id: string,
     data: { role_ids?: string[] } | { role_names?: string[] },
   ) => {
-    const response = await axiosInstance.put<ApiResponse<any>>(`/admin/users/${id}/roles`, data);
+    const response = await axiosInstance.put<ApiResponse<any>>(
+      `/admin/users/${id}/roles`,
+      data,
+    );
     return response.data;
   },
   createUser: async (data: {
@@ -58,8 +65,6 @@ export const adminService = {
     );
     return response.data;
   },
-
-
 
   // Hotel management
   getAdminHotels: async (params?: any) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { adminService } from "@/api/adminService";
 import type { UsersListItem, AdminUserDetail, UserRole } from "@/types/user";
-import type { PaginationMeta } from "@/types/common";
+import type { ApiResponse, PaginationMeta } from "@/types/common";
 
 const AdminUsersPage: React.FC = () => {
   // --- State ---
@@ -14,6 +14,8 @@ const AdminUsersPage: React.FC = () => {
     limit: 10,
     has_next: false,
   });
+  const [resultCreateUser, setResultCreateUser] =
+    useState<ApiResponse<UsersListItem>>();
 
   const [filters, setFilters] = useState({
     q: "",
@@ -98,7 +100,7 @@ const AdminUsersPage: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateUser = async (e: React.FormEvent) => {
+  const handleUpdateUser = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
     const res = await adminService.updateUser(selectedUser.id, editFormData);
@@ -108,21 +110,23 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    const res = await adminService.createUser(createFormData);
-    if (res.statusCode === 201) {
-      setIsCreateModalOpen(false);
-      setCreateFormData({
-        name: "",
-        email: "",
-        phone: "",
-        password: "",
-        role_ids: [],
-      });
-      fetchUsers();
-    } else {
-      alert(res.message || "Failed to create user");
+    try {
+      const res = await adminService.createUser(createFormData);
+      if (res.statusCode === 201) {
+        setIsCreateModalOpen(false);
+        setCreateFormData({
+          name: "",
+          email: "",
+          phone: "",
+          password: "",
+          role_ids: [],
+        });
+        fetchUsers();
+      }
+    } catch (error) {
+      setResultCreateUser(error.data);
     }
   };
 
@@ -389,6 +393,19 @@ const AdminUsersPage: React.FC = () => {
                   ))}
                 </div>
               </div>
+              {resultCreateUser && resultCreateUser?.errors?.length > 0 && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">
+                        {resultCreateUser.message} |
+                        {resultCreateUser.errors?.join(", ")}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"

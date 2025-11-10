@@ -65,6 +65,9 @@ axiosInstance.interceptors.response.use(
       window.location.href = "/forbidden";
       return Promise.reject(error);
     }
+    if (error.response && error.response.data) {
+      return Promise.reject(error.response); // 👈 QUAN TRỌNG
+    }
 
     // Reject other errors
     return Promise.reject(error);

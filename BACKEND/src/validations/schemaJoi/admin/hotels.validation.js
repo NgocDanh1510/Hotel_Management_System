@@ -4,22 +4,22 @@ const createHotelSchema = Joi.object({
   name: Joi.string().max(200).required(),
   description: Joi.string().optional(),
   address: Joi.string().max(500).optional(),
-  city: Joi.string().max(100).optional(),
-  country: Joi.string().max(100).optional(),
+  district_id: Joi.string().guid().required(),
   star_rating: Joi.number().min(1).max(5).optional(),
   contact_email: Joi.string().email().max(255).optional(),
   contact_phone: Joi.string().max(20).optional(),
   owner_id: Joi.string().guid().required(),
   amenity_ids: Joi.array().items(Joi.string().uuid()),
   slug: Joi.string().max(220).optional(),
+  status: Joi.string().valid("pending", "active", "rejected").default("pending"),
 });
 
 const listHotelsQuerySchema = Joi.object({
   q: Joi.string().max(255).optional(),
   is_active: Joi.boolean().optional(),
+  status: Joi.string().valid("pending", "active", "rejected").optional(),
   owner_id: Joi.string().guid().optional(),
-  city: Joi.string().max(100).optional(),
-  country: Joi.string().max(100).optional(),
+  district_id: Joi.string().guid().optional(),
   star_rating_min: Joi.number().min(0).max(5).optional(),
   star_rating_max: Joi.number().min(0).max(5).optional(),
   created_at_from: Joi.date().iso().optional(),
@@ -35,12 +35,12 @@ const updateHotelSchema = Joi.object({
   name: Joi.string().max(200).optional(),
   description: Joi.string().optional(),
   address: Joi.string().max(500).optional(),
-  city: Joi.string().max(100).optional(),
-  country: Joi.string().max(100).optional(),
+  district_id: Joi.string().guid().optional(),
   star_rating: Joi.number().min(1).max(5).optional(),
   contact_email: Joi.string().email().max(255).optional(),
   contact_phone: Joi.string().max(20).optional(),
   is_active: Joi.boolean().optional(),
+  status: Joi.string().valid("pending", "active", "rejected").optional(),
 });
 
 module.exports = {

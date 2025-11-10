@@ -3,14 +3,20 @@ const router = express.Router();
 const hotelController = require("../controllers/hotel.controller");
 const reviewController = require("../controllers/review.controller");
 const { validateQuery } = require("../middlewares/validate.middleware");
-const { listHotelReviewsQuerySchema } = require("../validations/schemaJoi/review.validation");
+const {
+  listHotelsQuerySchema,
+  checkAvailabilitySchema,
+} = require("../validations/schemaJoi/hotel.validation");
+const {
+  listHotelReviewsQuerySchema,
+} = require("../validations/schemaJoi/review.validation");
 
 /**
  * @route GET /api/v1/hotels
  * @desc List all public hotels with filtering
  * @access Public
  */
-router.get("/", hotelController.listHotels);
+router.get("/", validateQuery(listHotelsQuerySchema), hotelController.listHotels);
 
 /**
  * @route GET /api/v1/hotels/:slug
@@ -24,7 +30,11 @@ router.get("/:slug", hotelController.getHotelDetail);
  * @desc Check room availability for a hotel
  * @access Public
  */
-router.get("/:hotelId/rooms/availability", hotelController.checkAvailability);
+router.get(
+  "/:hotelId/rooms/availability",
+  validateQuery(checkAvailabilitySchema),
+  hotelController.checkAvailability
+);
 
 /**
  * @route GET /api/v1/hotels/:hotelId/reviews

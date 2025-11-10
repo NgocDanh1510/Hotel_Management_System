@@ -12,29 +12,31 @@ const createHotel = async (req, res, next) => {
       name,
       description,
       address,
-      city,
-      country,
+      district_id,
       star_rating,
       contact_email,
       contact_phone,
       owner_id,
       slug,
+      status,
+      amenity_ids,
     } = req.body;
 
     const hotelData = {
       name,
       owner_id,
+      district_id,
     };
 
     // Optional fields
     if (description !== undefined) hotelData.description = description;
     if (address !== undefined) hotelData.address = address;
-    if (city !== undefined) hotelData.city = city;
-    if (country !== undefined) hotelData.country = country;
     if (star_rating !== undefined) hotelData.star_rating = star_rating;
     if (contact_email !== undefined) hotelData.contact_email = contact_email;
     if (contact_phone !== undefined) hotelData.contact_phone = contact_phone;
     if (slug !== undefined) hotelData.slug = slug;
+    if (status !== undefined) hotelData.status = status;
+    if (amenity_ids !== undefined) hotelData.amenity_ids = amenity_ids;
 
     const hotel = await adminHotelService.createHotel(hotelData);
 
