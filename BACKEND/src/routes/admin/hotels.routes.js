@@ -74,7 +74,7 @@ router.delete(
 router.get(
   "/:hotelId/room-types",
   requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
-  adminRoomTypeController.listRoomTypes
+  adminRoomTypeController.listRoomTypes,
 );
 
 /**
@@ -85,7 +85,17 @@ router.post(
   "/:hotelId/room-types",
   requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
   validateSchema(createRoomTypeSchema),
-  adminRoomTypeController.createRoomType
+  adminRoomTypeController.createRoomType,
 );
 
+/**
+ * PUT /api/v1/admin/hotels/change-status/:id
+ * Update hotel status ("pending", "approved", "rejected")
+ * Permission required: hotel.manage_all
+ */
+router.put(
+  "/change-status/:id",
+  requirePermission("hotel.manage_all"),
+  adminHotelsController.updateHotelStatus,
+);
 module.exports = router;

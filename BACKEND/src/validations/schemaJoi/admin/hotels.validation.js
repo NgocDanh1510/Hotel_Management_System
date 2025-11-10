@@ -10,6 +10,7 @@ const createHotelSchema = Joi.object({
   contact_email: Joi.string().email().max(255).optional(),
   contact_phone: Joi.string().max(20).optional(),
   owner_id: Joi.string().guid().required(),
+  amenity_ids: Joi.array().items(Joi.string().uuid()),
   slug: Joi.string().max(220).optional(),
 });
 

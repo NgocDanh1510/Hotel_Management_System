@@ -129,6 +129,33 @@ const updateHotel = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * PUT /api/v1/admin/hotels/change-status/:id
+ * Update hotel status ("pending", "approved", "rejected")
+ * Permission required: hotel.manage_all
+ */
+const updateHotelStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const hotel = await adminHotelService.updateHotelStatus(id, status);
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Hotel status updated successfully",
+      data: hotel,
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return sendError(res, {
+        statusCode: 404,
+        message: error.message,
+      });
+    }
+    console.error("Update hotel status error:", error);
+    next(error);
+  }
+};
 
 /**
  * DELETE /api/v1/admin/hotels/:id
@@ -170,4 +197,5 @@ module.exports = {
   listHotels,
   updateHotel,
   deleteHotel,
+  updateHotelStatus,
 };

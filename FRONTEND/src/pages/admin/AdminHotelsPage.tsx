@@ -7,9 +7,9 @@ export interface AdminHotel {
   name: string;
   address: string;
   description?: string;
-  phone: string;
-  email: string;
-  star: number;
+  contact_phone: string;
+  contact_email: string;
+  star_rating: number;
   created_at: string;
 }
 
@@ -46,7 +46,8 @@ const AdminHotelsPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRoomTypesModalOpen, setIsRoomTypesModalOpen] = useState(false);
-  const [isCreateRoomTypeModalOpen, setIsCreateRoomTypeModalOpen] = useState(false);
+  const [isCreateRoomTypeModalOpen, setIsCreateRoomTypeModalOpen] =
+    useState(false);
 
   const [selectedHotel, setSelectedHotel] = useState<AdminHotel | null>(null);
   const [roomTypes, setRoomTypes] = useState<AdminRoomType[]>([]);
@@ -55,16 +56,22 @@ const AdminHotelsPage: React.FC = () => {
     name: "",
     address: "",
     description: "",
-    phone: "",
-    email: "",
-    star: 1,
+    contact_phone: "",
+    contact_email: "",
+    star_rating: 1,
     amenity_ids: [] as string[],
+    owner_id: "",
   });
+
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [selectedOwnerName, setSelectedOwnerName] = useState("");
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
   const [editFormData, setEditFormData] = useState({
     name: "",
-    phone: "",
-    star: 1,
+    contact_phone: "",
+    star_rating: 1,
   });
 
   const [createRoomTypeData, setCreateRoomTypeData] = useState({
@@ -75,7 +82,8 @@ const AdminHotelsPage: React.FC = () => {
     amenity_ids: [] as string[],
   });
 
-  const timerSearch = useRef<NodeJS.Timeout | null>(null);
+  const timerSearch = useRef<number | null>(null);
+  const timerUserSearch = useRef<number | null>(null);
 
   // --- API Calls ---
   const fetchHotels = useCallback(async () => {
@@ -88,7 +96,14 @@ const AdminHotelsPage: React.FC = () => {
       const response = await adminService.getAdminHotels(params);
       if (response.success || response.statusCode === 200) {
         setHotels(response.data);
-        setMeta(response.meta || { total: response.data.length, page: 1, limit: 10, has_next: false });
+        setMeta(
+          response.meta || {
+            total: response.data.length,
+            page: 1,
+            limit: 10,
+            has_next: false,
+          },
+        );
       }
     } catch (error) {
       alert("Error fetching hotels");
@@ -102,11 +117,14 @@ const AdminHotelsPage: React.FC = () => {
   }, [fetchHotels]);
 
   useEffect(() => {
-    adminService.getAmenities().then((res) => {
-      if (res.success || res.statusCode === 200) {
-        setAmenities(res.data);
-      }
-    }).catch(err => console.log(err));
+    adminService
+      .getAmenities()
+      .then((res) => {
+        if (res.success || res.statusCode === 200) {
+          setAmenities(res.data);
+        }
+      })
+      .catch((err) => console.log(err));
   }, []);
 
   // --- Handlers ---
@@ -123,7 +141,17 @@ const AdminHotelsPage: React.FC = () => {
       const res = await adminService.createHotel(createFormData);
       if (res.statusCode === 201 || res.success) {
         setIsCreateModalOpen(false);
-        setCreateFormData({ name: "", address: "", description: "", phone: "", email: "", star: 1, amenity_ids: [] });
+        setCreateFormData({
+          name: "",
+          address: "",
+          description: "",
+          contact_phone: "",
+          contact_email: "",
+          star_rating: 1,
+          amenity_ids: [],
+          owner_id: "",
+        });
+        setSelectedOwnerName("");
         fetchHotels();
       } else {
         alert(res.message || "Failed to create hotel");
@@ -135,7 +163,11 @@ const AdminHotelsPage: React.FC = () => {
 
   const handleOpenEdit = (hotel: AdminHotel) => {
     setSelectedHotel(hotel);
-    setEditFormData({ name: hotel.name, phone: hotel.phone, star: hotel.star });
+    setEditFormData({
+      name: hotel.name,
+      contact_phone: hotel.contact_phone,
+      star_rating: hotel.star_rating,
+    });
     setIsEditModalOpen(true);
   };
 
@@ -143,7 +175,10 @@ const AdminHotelsPage: React.FC = () => {
     e.preventDefault();
     if (!selectedHotel) return;
     try {
-      const res = await adminService.updateHotel(selectedHotel.id, editFormData);
+      const res = await adminService.updateHotel(
+        selectedHotel.id,
+        editFormData,
+      );
       if (res.statusCode === 200 || res.success) {
         setIsEditModalOpen(false);
         fetchHotels();
@@ -195,7 +230,13 @@ const AdminHotelsPage: React.FC = () => {
       const res = await adminService.createRoomType(selectedHotel.id, payload);
       if (res.statusCode === 201 || res.success) {
         setIsCreateRoomTypeModalOpen(false);
-        setCreateRoomTypeData({ name: "", max_adult: 1, max_child: 0, price: 0, amenity_ids: [] });
+        setCreateRoomTypeData({
+          name: "",
+          max_adult: 1,
+          max_child: 0,
+          price: 0,
+          amenity_ids: [],
+        });
         // Refresh room types
         handleViewRoomTypes(selectedHotel);
       } else {
@@ -206,11 +247,42 @@ const AdminHotelsPage: React.FC = () => {
     }
   };
 
+  const handleUserSearch = (q: string) => {
+    setUserSearchQuery(q);
+    if (timerUserSearch.current) clearTimeout(timerUserSearch.current);
+
+    if (!q.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    timerUserSearch.current = window.setTimeout(async () => {
+      setIsSearchingUsers(true);
+      try {
+        const res = await adminService.getUsers({ q, limit: 5 });
+        if (res.statusCode === 200) {
+          setUserSearchResults(res.data);
+        }
+      } catch (err) {
+        console.error("User search error:", err);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    }, 500);
+  };
+
+  const handleSelectOwner = (user: any) => {
+    setCreateFormData((p) => ({ ...p, owner_id: user.id }));
+    setSelectedOwnerName(`${user.name} (${user.email})`);
+    setUserSearchResults([]);
+    setUserSearchQuery("");
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Admin: Manage Hotels</h1>
-        <button 
+        <button
           onClick={() => setIsCreateModalOpen(true)}
           className="bg-green-600 text-white px-4 py-2 rounded font-bold"
         >
@@ -229,7 +301,9 @@ const AdminHotelsPage: React.FC = () => {
         <select
           className="border p-2 rounded"
           value={filters.star}
-          onChange={(e) => setFilters((prev) => ({ ...prev, star: e.target.value, page: 1 }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, star: e.target.value, page: 1 }))
+          }
         >
           <option value="">All Stars</option>
           <option value="1">1 Star</option>
@@ -241,7 +315,9 @@ const AdminHotelsPage: React.FC = () => {
         <select
           className="border p-2 rounded"
           value={filters.sort}
-          onChange={(e) => setFilters((prev) => ({ ...prev, sort: e.target.value, page: 1 }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, sort: e.target.value, page: 1 }))
+          }
         >
           <option value="created_desc">Newest</option>
           <option value="created_asc">Oldest</option>
@@ -265,21 +341,27 @@ const AdminHotelsPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-4 text-center">Loading...</td>
+                <td colSpan={5} className="p-4 text-center">
+                  Loading...
+                </td>
               </tr>
             ) : hotels.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-4 text-center">No hotels found.</td>
+                <td colSpan={5} className="p-4 text-center">
+                  No hotels found.
+                </td>
               </tr>
             ) : (
               hotels.map((hotel) => (
                 <tr key={hotel.id} className="border-t hover:bg-gray-50">
                   <td className="p-2 font-medium">{hotel.name}</td>
                   <td className="p-2">{hotel.address}</td>
-                  <td className="p-2">{hotel.star} ⭐</td>
+                  <td className="p-2">{hotel.star_rating} ⭐</td>
                   <td className="p-2">
-                    <p>{hotel.phone}</p>
-                    <p className="text-sm text-gray-500">{hotel.email}</p>
+                    <p>{hotel.contact_phone}</p>
+                    <p className="text-sm text-gray-500">
+                      {hotel.contact_email}
+                    </p>
                   </td>
                   <td className="p-2 space-x-2">
                     <button
@@ -338,43 +420,160 @@ const AdminHotelsPage: React.FC = () => {
           <div className="bg-white p-6 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Create New Hotel</h2>
             <form onSubmit={handleCreateHotel} className="space-y-4">
-              <input type="text" className="w-full border p-2 rounded" placeholder="Name" required
-                value={createFormData.name} onChange={e => setCreateFormData(p => ({ ...p, name: e.target.value }))} />
-              <input type="text" className="w-full border p-2 rounded" placeholder="Address" required
-                value={createFormData.address} onChange={e => setCreateFormData(p => ({ ...p, address: e.target.value }))} />
-              <textarea className="w-full border p-2 rounded" placeholder="Description"
-                value={createFormData.description} onChange={e => setCreateFormData(p => ({ ...p, description: e.target.value }))} />
-              <input type="tel" className="w-full border p-2 rounded" placeholder="Phone" required
-                value={createFormData.phone} onChange={e => setCreateFormData(p => ({ ...p, phone: e.target.value }))} />
-              <input type="email" className="w-full border p-2 rounded" placeholder="Email" required
-                value={createFormData.email} onChange={e => setCreateFormData(p => ({ ...p, email: e.target.value }))} />
+              <div>
+                <label className="block text-sm font-bold mb-1">
+                  Owner (User Manager)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="w-full border p-2 rounded mb-1"
+                    placeholder="Search user by name/email..."
+                    value={userSearchQuery}
+                    onChange={(e) => handleUserSearch(e.target.value)}
+                  />
+                  {selectedOwnerName && (
+                    <p className="text-xs text-green-600 font-bold mb-2">
+                      Selected: {selectedOwnerName}
+                    </p>
+                  )}
+                  {isSearchingUsers && (
+                    <p className="text-xs text-gray-400">Searching...</p>
+                  )}
+                  {userSearchResults.length > 0 && (
+                    <div className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-40 overflow-y-auto">
+                      {userSearchResults.map((u) => (
+                        <div
+                          key={u.id}
+                          className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleSelectOwner(u)}
+                        >
+                          <p className="font-bold">{u.name}</p>
+                          <p className="text-xs text-gray-500">{u.email}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!createFormData.owner_id && (
+                  <p className="text-xs text-red-500 italic">
+                    * Please search and select an owner
+                  </p>
+                )}
+              </div>
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Name"
+                required
+                value={createFormData.name}
+                onChange={(e) =>
+                  setCreateFormData((p) => ({ ...p, name: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Address"
+                required
+                value={createFormData.address}
+                onChange={(e) =>
+                  setCreateFormData((p) => ({ ...p, address: e.target.value }))
+                }
+              />
+              <textarea
+                className="w-full border p-2 rounded"
+                placeholder="Description"
+                value={createFormData.description}
+                onChange={(e) =>
+                  setCreateFormData((p) => ({
+                    ...p,
+                    description: e.target.value,
+                  }))
+                }
+              />
+              <input
+                type="tel"
+                className="w-full border p-2 rounded"
+                placeholder="Phone"
+                required
+                value={createFormData.contact_phone}
+                onChange={(e) =>
+                  setCreateFormData((p) => ({
+                    ...p,
+                    contact_phone: e.target.value,
+                  }))
+                }
+              />
+              <input
+                type="email"
+                className="w-full border p-2 rounded"
+                placeholder="Email"
+                required
+                value={createFormData.contact_email}
+                onChange={(e) =>
+                  setCreateFormData((p) => ({
+                    ...p,
+                    contact_email: e.target.value,
+                  }))
+                }
+              />
               <div>
                 <label className="block text-sm">Star Rating</label>
-                <input type="number" min="1" max="5" className="w-full border p-2 rounded" required
-                  value={createFormData.star} onChange={e => setCreateFormData(p => ({ ...p, star: Number(e.target.value) }))} />
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  className="w-full border p-2 rounded"
+                  required
+                  value={createFormData.star_rating}
+                  onChange={(e) =>
+                    setCreateFormData((p) => ({
+                      ...p,
+                      star_rating: Number(e.target.value),
+                    }))
+                  }
+                />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-bold">Amenities:</p>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto border p-2 rounded">
-                  {amenities.map(a => (
-                    <label key={a.id} className="flex items-center gap-1 border p-1 rounded text-xs cursor-pointer">
-                      <input type="checkbox" checked={createFormData.amenity_ids.includes(a.id)}
+                  {amenities.map((a) => (
+                    <label
+                      key={a.id}
+                      className="flex items-center gap-1 border p-1 rounded text-xs cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={createFormData.amenity_ids.includes(a.id)}
                         onChange={() => {
-                          setCreateFormData(p => ({
+                          setCreateFormData((p) => ({
                             ...p,
-                            amenity_ids: p.amenity_ids.includes(a.id) 
-                              ? p.amenity_ids.filter(id => id !== a.id) 
-                              : [...p.amenity_ids, a.id]
+                            amenity_ids: p.amenity_ids.includes(a.id)
+                              ? p.amenity_ids.filter((id) => id !== a.id)
+                              : [...p.amenity_ids, a.id],
                           }));
-                        }} />
+                        }}
+                      />
                       {a.name}
                     </label>
                   ))}
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded font-bold">Create</button>
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white py-2 rounded font-bold"
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="flex-1 bg-gray-200 py-2 rounded"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -387,18 +586,60 @@ const AdminHotelsPage: React.FC = () => {
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
             <h2 className="text-xl font-bold mb-4">Edit Hotel</h2>
             <form onSubmit={handleUpdateHotel} className="space-y-4">
-              <input type="text" className="w-full border p-2 rounded" placeholder="Name" required
-                value={editFormData.name} onChange={e => setEditFormData(p => ({ ...p, name: e.target.value }))} />
-              <input type="tel" className="w-full border p-2 rounded" placeholder="Phone" required
-                value={editFormData.phone} onChange={e => setEditFormData(p => ({ ...p, phone: e.target.value }))} />
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Name"
+                required
+                value={editFormData.name}
+                onChange={(e) =>
+                  setEditFormData((p) => ({ ...p, name: e.target.value }))
+                }
+              />
+              <input
+                type="tel"
+                className="w-full border p-2 rounded"
+                placeholder="Phone"
+                required
+                value={editFormData.contact_phone}
+                onChange={(e) =>
+                  setEditFormData((p) => ({
+                    ...p,
+                    contact_phone: e.target.value,
+                  }))
+                }
+              />
               <div>
                 <label className="block text-sm">Star Rating</label>
-                <input type="number" min="1" max="5" className="w-full border p-2 rounded" required
-                  value={editFormData.star} onChange={e => setEditFormData(p => ({ ...p, star: Number(e.target.value) }))} />
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  className="w-full border p-2 rounded"
+                  required
+                  value={editFormData.star_rating}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({
+                      ...p,
+                      star_rating: Number(e.target.value),
+                    }))
+                  }
+                />
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-yellow-500 text-white py-2 rounded font-bold">Update</button>
-                <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-yellow-500 text-white py-2 rounded font-bold"
+                >
+                  Update
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 bg-gray-200 py-2 rounded"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -410,15 +651,17 @@ const AdminHotelsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Room Types: {selectedHotel.name}</h2>
-              <button 
+              <h2 className="text-xl font-bold">
+                Room Types: {selectedHotel.name}
+              </h2>
+              <button
                 onClick={() => setIsCreateRoomTypeModalOpen(true)}
                 className="bg-green-600 text-white px-3 py-1 rounded text-sm font-bold"
               >
                 + Add Room Type
               </button>
             </div>
-            
+
             <div className="overflow-x-auto border rounded mb-4">
               <table className="w-full text-left">
                 <thead className="bg-gray-200">
@@ -431,9 +674,13 @@ const AdminHotelsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {roomTypes.length === 0 ? (
-                    <tr><td colSpan={4} className="p-4 text-center">No room types found.</td></tr>
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center">
+                        No room types found.
+                      </td>
+                    </tr>
                   ) : (
-                    roomTypes.map(rt => (
+                    roomTypes.map((rt) => (
                       <tr key={rt.id} className="border-t">
                         <td className="p-2 font-medium">{rt.name}</td>
                         <td className="p-2">{rt.max_adult}</td>
@@ -446,7 +693,12 @@ const AdminHotelsPage: React.FC = () => {
               </table>
             </div>
 
-            <button onClick={() => setIsRoomTypesModalOpen(false)} className="w-full bg-gray-200 py-2 rounded">Close</button>
+            <button
+              onClick={() => setIsRoomTypesModalOpen(false)}
+              className="w-full bg-gray-200 py-2 rounded"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
@@ -457,42 +709,90 @@ const AdminHotelsPage: React.FC = () => {
           <div className="bg-white p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Create Room Type</h2>
             <form onSubmit={handleCreateRoomType} className="space-y-4">
-              <input type="text" className="w-full border p-2 rounded" placeholder="Room Type Name (e.g. Suite)" required
-                value={createRoomTypeData.name} onChange={e => setCreateRoomTypeData(p => ({ ...p, name: e.target.value }))} />
-              
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Room Type Name (e.g. Suite)"
+                required
+                value={createRoomTypeData.name}
+                onChange={(e) =>
+                  setCreateRoomTypeData((p) => ({ ...p, name: e.target.value }))
+                }
+              />
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm">Max Adult</label>
-                  <input type="number" min="1" className="w-full border p-2 rounded" required
-                    value={createRoomTypeData.max_adult} onChange={e => setCreateRoomTypeData(p => ({ ...p, max_adult: Number(e.target.value) }))} />
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full border p-2 rounded"
+                    required
+                    value={createRoomTypeData.max_adult}
+                    onChange={(e) =>
+                      setCreateRoomTypeData((p) => ({
+                        ...p,
+                        max_adult: Number(e.target.value),
+                      }))
+                    }
+                  />
                 </div>
                 <div>
                   <label className="block text-sm">Max Child</label>
-                  <input type="number" min="0" className="w-full border p-2 rounded" required
-                    value={createRoomTypeData.max_child} onChange={e => setCreateRoomTypeData(p => ({ ...p, max_child: Number(e.target.value) }))} />
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full border p-2 rounded"
+                    required
+                    value={createRoomTypeData.max_child}
+                    onChange={(e) =>
+                      setCreateRoomTypeData((p) => ({
+                        ...p,
+                        max_child: Number(e.target.value),
+                      }))
+                    }
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm">Price (VND)</label>
-                <input type="number" min="0" step="1000" className="w-full border p-2 rounded" required
-                  value={createRoomTypeData.price} onChange={e => setCreateRoomTypeData(p => ({ ...p, price: Number(e.target.value) }))} />
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  className="w-full border p-2 rounded"
+                  required
+                  value={createRoomTypeData.price}
+                  onChange={(e) =>
+                    setCreateRoomTypeData((p) => ({
+                      ...p,
+                      price: Number(e.target.value),
+                    }))
+                  }
+                />
               </div>
 
               <div className="space-y-1">
                 <p className="text-sm font-bold">Amenities:</p>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto border p-2 rounded">
-                  {amenities.map(a => (
-                    <label key={a.id} className="flex items-center gap-1 border p-1 rounded text-xs cursor-pointer">
-                      <input type="checkbox" checked={createRoomTypeData.amenity_ids.includes(a.id)}
+                  {amenities.map((a) => (
+                    <label
+                      key={a.id}
+                      className="flex items-center gap-1 border p-1 rounded text-xs cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={createRoomTypeData.amenity_ids.includes(a.id)}
                         onChange={() => {
-                          setCreateRoomTypeData(p => ({
+                          setCreateRoomTypeData((p) => ({
                             ...p,
-                            amenity_ids: p.amenity_ids.includes(a.id) 
-                              ? p.amenity_ids.filter(id => id !== a.id) 
-                              : [...p.amenity_ids, a.id]
+                            amenity_ids: p.amenity_ids.includes(a.id)
+                              ? p.amenity_ids.filter((id) => id !== a.id)
+                              : [...p.amenity_ids, a.id],
                           }));
-                        }} />
+                        }}
+                      />
                       {a.name}
                     </label>
                   ))}
@@ -500,14 +800,24 @@ const AdminHotelsPage: React.FC = () => {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded font-bold">Create</button>
-                <button type="button" onClick={() => setIsCreateRoomTypeModalOpen(false)} className="flex-1 bg-gray-200 py-2 rounded">Cancel</button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white py-2 rounded font-bold"
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateRoomTypeModalOpen(false)}
+                  className="flex-1 bg-gray-200 py-2 rounded"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 };

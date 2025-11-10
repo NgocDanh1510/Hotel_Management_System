@@ -1,4 +1,11 @@
-const { Hotel, User, Role, Booking, sequelize } = require("../../models");
+const {
+  Hotel,
+  User,
+  Role,
+  Booking,
+  sequelize,
+  Amenity,
+} = require("../../models");
 const { Op, literal, col, fn } = require("sequelize");
 
 class AdminHotelService {
@@ -92,10 +99,10 @@ class AdminHotelService {
   /**
    * Create a new hotel
    * @param {Object} data - Hotel data
-   * @returns {Promise<Hotel>}
+
    */
   async createHotel(data) {
-    const { name, owner_id, slug, ...otherData } = data;
+    const { name, owner_id, slug, amenity_ids, ...otherData } = data;
 
     // Validate owner exists and has required role
     await this.validateOwner(owner_id);
@@ -110,6 +117,18 @@ class AdminHotelService {
       ...otherData,
       is_active: true,
     });
+    if (amenity_ids && amenity_ids.length > 0) {
+      const amenities = await Amenity.findAll({
+        where: { id: amenity_ids },
+        attributes: ["id", "name"],
+      });
+      if (amenities.length !== amenity_ids.length) {
+        const error = new Error("One or more amenities do not exist");
+        error.statusCode = 400;
+        throw error;
+      }
+      await hotel.addAmenities(amenities);
+    }
 
     return hotel.toJSON();
   }
@@ -386,6 +405,16 @@ class AdminHotelService {
       id: hotel.id,
       message: "Hotel soft deleted successfully",
     };
+  }
+  async updateHotelStatus(hotelId, status) {
+    const hotel = await Hotel.findByPk(hotelId);
+    if (!hotel) {
+      const error = new Error("Hotel not found");
+      error.statusCode = 404;
+      throw error;
+    }
+    await hotel.update({ status });
+    return hotel.toJSON();
   }
 }
 
