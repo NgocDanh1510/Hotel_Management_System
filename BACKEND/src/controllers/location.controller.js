@@ -1,4 +1,5 @@
 const locationService = require("../services/location.service");
+const { sendSuccess } = require("../utils/apiResponse");
 
 const listCities = async (req, res, next) => {
   try {

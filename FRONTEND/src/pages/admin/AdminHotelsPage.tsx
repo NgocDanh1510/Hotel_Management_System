@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { adminService } from "@/api/adminService";
+import locationService from "@/api/locationService";
 import type { PaginationMeta } from "@/types/common";
 
 export interface AdminHotel {
@@ -10,6 +11,13 @@ export interface AdminHotel {
   contact_phone: string;
   contact_email: string;
   star_rating: number;
+  status: string;
+  district_id: string;
+  District?: {
+    id: string;
+    name: string;
+    city_id: string;
+  };
   created_at: string;
 }
 
@@ -41,6 +49,9 @@ const AdminHotelsPage: React.FC = () => {
   });
 
   const [amenities, setAmenities] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [editDistricts, setEditDistricts] = useState<any[]>([]);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -55,6 +66,8 @@ const AdminHotelsPage: React.FC = () => {
   const [createFormData, setCreateFormData] = useState({
     name: "",
     address: "",
+    city_id: "",
+    district_id: "",
     description: "",
     contact_phone: "",
     contact_email: "",
@@ -70,7 +83,11 @@ const AdminHotelsPage: React.FC = () => {
 
   const [editFormData, setEditFormData] = useState({
     name: "",
+    address: "",
+    city_id: "",
+    district_id: "",
     contact_phone: "",
+    contact_email: "",
     star_rating: 1,
   });
 
@@ -125,7 +142,40 @@ const AdminHotelsPage: React.FC = () => {
         }
       })
       .catch((err) => console.log(err));
+
+    locationService
+      .getCities()
+      .then((res) => {
+        if (res.statusCode === 200) {
+          setCities(res.data);
+        }
+      })
+      .catch((err) => console.log(err));
   }, []);
+
+  useEffect(() => {
+    if (createFormData.city_id) {
+      locationService.getDistricts(createFormData.city_id).then((res) => {
+        if (res.statusCode === 200) {
+          setDistricts(res.data);
+        }
+      });
+    } else {
+      setDistricts([]);
+    }
+  }, [createFormData.city_id]);
+
+  useEffect(() => {
+    if (editFormData.city_id) {
+      locationService.getDistricts(editFormData.city_id).then((res) => {
+        if (res.statusCode === 200) {
+          setEditDistricts(res.data);
+        }
+      });
+    } else {
+      setEditDistricts([]);
+    }
+  }, [editFormData.city_id]);
 
   // --- Handlers ---
   const handelOnSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,6 +194,8 @@ const AdminHotelsPage: React.FC = () => {
         setCreateFormData({
           name: "",
           address: "",
+          city_id: "",
+          district_id: "",
           description: "",
           contact_phone: "",
           contact_email: "",
@@ -165,7 +217,11 @@ const AdminHotelsPage: React.FC = () => {
     setSelectedHotel(hotel);
     setEditFormData({
       name: hotel.name,
+      address: hotel.address || "",
+      city_id: hotel.District?.city_id || "",
+      district_id: hotel.district_id || "",
       contact_phone: hotel.contact_phone,
+      contact_email: hotel.contact_email || "",
       star_rating: hotel.star_rating,
     });
     setIsEditModalOpen(true);
@@ -332,7 +388,7 @@ const AdminHotelsPage: React.FC = () => {
           <thead className="bg-gray-200">
             <tr>
               <th className="p-2">Name</th>
-              <th className="p-2">Address</th>
+              <th className="p-2">Location</th>
               <th className="p-2">Star</th>
               <th className="p-2">Contact</th>
               <th className="p-2">Actions</th>
@@ -355,7 +411,12 @@ const AdminHotelsPage: React.FC = () => {
               hotels.map((hotel) => (
                 <tr key={hotel.id} className="border-t hover:bg-gray-50">
                   <td className="p-2 font-medium">{hotel.name}</td>
-                  <td className="p-2">{hotel.address}</td>
+                  <td className="p-2">
+                    {hotel.address}
+                    <p className="text-xs text-gray-500">
+                      {hotel.District?.name}
+                    </p>
+                  </td>
                   <td className="p-2">{hotel.star_rating} ⭐</td>
                   <td className="p-2">
                     <p>{hotel.contact_phone}</p>
@@ -481,6 +542,46 @@ const AdminHotelsPage: React.FC = () => {
                   setCreateFormData((p) => ({ ...p, address: e.target.value }))
                 }
               />
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  className="border p-2 rounded"
+                  required
+                  value={createFormData.city_id}
+                  onChange={(e) =>
+                    setCreateFormData((p) => ({
+                      ...p,
+                      city_id: e.target.value,
+                      district_id: "",
+                    }))
+                  }
+                >
+                  <option value="">Select City</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="border p-2 rounded"
+                  required
+                  disabled={!createFormData.city_id}
+                  value={createFormData.district_id}
+                  onChange={(e) =>
+                    setCreateFormData((p) => ({
+                      ...p,
+                      district_id: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select District</option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <textarea
                 className="w-full border p-2 rounded"
                 placeholder="Description"
@@ -597,6 +698,56 @@ const AdminHotelsPage: React.FC = () => {
                 }
               />
               <input
+                type="text"
+                className="w-full border p-2 rounded"
+                placeholder="Address"
+                required
+                value={editFormData.address}
+                onChange={(e) =>
+                  setEditFormData((p) => ({ ...p, address: e.target.value }))
+                }
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  className="border p-2 rounded"
+                  required
+                  value={editFormData.city_id}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({
+                      ...p,
+                      city_id: e.target.value,
+                      district_id: "",
+                    }))
+                  }
+                >
+                  <option value="">Select City</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="border p-2 rounded"
+                  required
+                  disabled={!editFormData.city_id}
+                  value={editFormData.district_id}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({
+                      ...p,
+                      district_id: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select District</option>
+                  {editDistricts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
                 type="tel"
                 className="w-full border p-2 rounded"
                 placeholder="Phone"
@@ -606,6 +757,19 @@ const AdminHotelsPage: React.FC = () => {
                   setEditFormData((p) => ({
                     ...p,
                     contact_phone: e.target.value,
+                  }))
+                }
+              />
+              <input
+                type="email"
+                className="w-full border p-2 rounded"
+                placeholder="Email"
+                required
+                value={editFormData.contact_email}
+                onChange={(e) =>
+                  setEditFormData((p) => ({
+                    ...p,
+                    contact_email: e.target.value,
                   }))
                 }
               />
