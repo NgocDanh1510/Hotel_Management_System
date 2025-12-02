@@ -12,11 +12,16 @@ export interface AdminHotel {
   contact_email: string;
   star_rating: number;
   status: string;
+  is_active: boolean;
   district_id: string;
   District?: {
     id: string;
     name: string;
     city_id: string;
+    City?: {
+      id: string;
+      name: string;
+    };
   };
   created_at: string;
 }
@@ -218,7 +223,7 @@ const AdminHotelsPage: React.FC = () => {
     setEditFormData({
       name: hotel.name,
       address: hotel.address || "",
-      city_id: hotel.District?.city_id || "",
+      city_id: hotel.District?.City?.id || "",
       district_id: hotel.district_id || "",
       contact_phone: hotel.contact_phone,
       contact_email: hotel.contact_email || "",
@@ -849,7 +854,12 @@ const AdminHotelsPage: React.FC = () => {
                         <td className="p-2 font-medium">{rt.name}</td>
                         <td className="p-2">{rt.max_adult}</td>
                         <td className="p-2">{rt.max_child}</td>
-                        <td className="p-2">{rt.price.toLocaleString()} đ</td>
+                        <td className="p-2">
+                          {rt?.price?.toLocaleString("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                          })}
+                        </td>
                       </tr>
                     ))
                   )}

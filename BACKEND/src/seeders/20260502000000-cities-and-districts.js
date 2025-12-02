@@ -6,76 +6,99 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const now = new Date();
 
-    // 1. Create Cities
-    const hcmCityId = uuidv4();
-    const hnCityId = uuidv4();
-    const dnCityId = uuidv4();
-    const ctCityId = uuidv4();
+    // 1. Handle Cities
+    // Get existing cities to avoid duplicates
+    const [existingCities] = await queryInterface.sequelize.query(
+      'SELECT id, code FROM cities'
+    );
+    const existingCityCodes = existingCities.map(c => c.code);
+    const cityCodeToId = Object.fromEntries(existingCities.map(c => [c.code, c.id]));
 
-    const cities = [
-      {
-        id: hcmCityId,
-        code: 'HCM',
-        name: 'Hồ Chí Minh',
-        created_at: now,
-        updated_at: now,
-      },
-      {
-        id: hnCityId,
-        code: 'HN',
-        name: 'Hà Nội',
-        created_at: now,
-        updated_at: now,
-      },
-      {
-        id: dnCityId,
-        code: 'DN',
-        name: 'Đà Nẵng',
-        created_at: now,
-        updated_at: now,
-      },
-      {
-        id: ctCityId,
-        code: 'CT',
-        name: 'Cần Thơ',
-        created_at: now,
-        updated_at: now,
-      },
+    const cityData = [
+      { code: 'HCM', name: 'Hồ Chí Minh' },
+      { code: 'HN', name: 'Hà Nội' },
+      { code: 'DN', name: 'Đà Nẵng' },
+      { code: 'CT', name: 'Cần Thơ' },
     ];
 
-    await queryInterface.bulkInsert('cities', cities, {});
+    const citiesToInsert = [];
+    for (const city of cityData) {
+      if (!existingCityCodes.includes(city.code)) {
+        const id = uuidv4();
+        citiesToInsert.push({
+          id,
+          code: city.code,
+          name: city.name,
+          created_at: now,
+          updated_at: now,
+        });
+        cityCodeToId[city.code] = id;
+      }
+    }
 
-    // 2. Create Districts
-    const districts = [
+    if (citiesToInsert.length > 0) {
+      await queryInterface.bulkInsert('cities', citiesToInsert, {});
+    }
+
+    // 2. Handle Districts
+    // Get existing districts to avoid duplicates
+    const [existingDistricts] = await queryInterface.sequelize.query(
+      'SELECT code FROM districts'
+    );
+    const existingDistrictCodes = existingDistricts.map(d => d.code);
+
+    const districtData = [
       // Ho Chi Minh City
-      { id: uuidv4(), city_id: hcmCityId, code: 'HCM-Q1', name: 'Quận 1', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hcmCityId, code: 'HCM-Q2', name: 'Quận 2', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hcmCityId, code: 'HCM-Q3', name: 'Quận 3', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hcmCityId, code: 'HCM-Q7', name: 'Quận 7', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hcmCityId, code: 'HCM-TB', name: 'Tân Bình', created_at: now, updated_at: now },
+      { cityCode: 'HCM', code: 'HCM-Q1', name: 'Quận 1' },
+      { cityCode: 'HCM', code: 'HCM-Q2', name: 'Quận 2' },
+      { cityCode: 'HCM', code: 'HCM-Q3', name: 'Quận 3' },
+      { cityCode: 'HCM', code: 'HCM-Q7', name: 'Quận 7' },
+      { cityCode: 'HCM', code: 'HCM-TB', name: 'Tân Bình' },
       
       // Ha Noi
-      { id: uuidv4(), city_id: hnCityId, code: 'HN-HK', name: 'Hoàn Kiếm', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hnCityId, code: 'HN-DD', name: 'Đống Đa', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hnCityId, code: 'HN-BD', name: 'Ba Đình', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: hnCityId, code: 'HN-CG', name: 'Cầu Giấy', created_at: now, updated_at: now },
+      { cityCode: 'HN', code: 'HN-HK', name: 'Hoàn Kiếm' },
+      { cityCode: 'HN', code: 'HN-DD', name: 'Đống Đa' },
+      { cityCode: 'HN', code: 'HN-BD', name: 'Ba Đình' },
+      { cityCode: 'HN', code: 'HN-CG', name: 'Cầu Giấy' },
       
       // Da Nang
-      { id: uuidv4(), city_id: dnCityId, code: 'DN-HC', name: 'Hải Châu', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: dnCityId, code: 'DN-ST', name: 'Sơn Trà', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: dnCityId, code: 'DN-NHS', name: 'Ngũ Hành Sơn', created_at: now, updated_at: now },
+      { cityCode: 'DN', code: 'DN-HC', name: 'Hải Châu' },
+      { cityCode: 'DN', code: 'DN-ST', name: 'Sơn Trà' },
+      { cityCode: 'DN', code: 'DN-NHS', name: 'Ngũ Hành Sơn' },
 
       // Can Tho
-      { id: uuidv4(), city_id: ctCityId, code: 'CT-NK', name: 'Ninh Kiều', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: ctCityId, code: 'CT-CR', name: 'Cái Răng', created_at: now, updated_at: now },
-      { id: uuidv4(), city_id: ctCityId, code: 'CT-BT', name: 'Bình Thủy', created_at: now, updated_at: now },
+      { cityCode: 'CT', code: 'CT-NK', name: 'Ninh Kiều' },
+      { cityCode: 'CT', code: 'CT-CR', name: 'Cái Răng' },
+      { cityCode: 'CT', code: 'CT-BT', name: 'Bình Thủy' },
     ];
 
-    await queryInterface.bulkInsert('districts', districts, {});
+    const districtsToInsert = [];
+    for (const district of districtData) {
+      if (!existingDistrictCodes.includes(district.code)) {
+        const cityId = cityCodeToId[district.cityCode];
+        if (cityId) {
+          districtsToInsert.push({
+            id: uuidv4(),
+            city_id: cityId,
+            code: district.code,
+            name: district.name,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    if (districtsToInsert.length > 0) {
+      await queryInterface.bulkInsert('districts', districtsToInsert, {});
+    }
   },
 
   async down(queryInterface, Sequelize) {
+    // In down, we might want to only delete what we inserted, but usually bulkDelete is fine for seeders
+    // unless we have real data mixed in.
     await queryInterface.bulkDelete('districts', null, {});
     await queryInterface.bulkDelete('cities', null, {});
   }
 };
+

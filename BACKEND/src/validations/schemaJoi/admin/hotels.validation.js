@@ -11,13 +11,13 @@ const createHotelSchema = Joi.object({
   owner_id: Joi.string().guid().required(),
   amenity_ids: Joi.array().items(Joi.string().uuid()),
   slug: Joi.string().max(220).optional(),
-  status: Joi.string().valid("pending", "active", "rejected").default("pending"),
+  status: Joi.string().valid("pending", "approved", "rejected").default("pending"),
 });
 
 const listHotelsQuerySchema = Joi.object({
   q: Joi.string().max(255).optional(),
   is_active: Joi.boolean().optional(),
-  status: Joi.string().valid("pending", "active", "rejected").optional(),
+  status: Joi.string().valid("pending", "approved", "rejected").optional(),
   owner_id: Joi.string().guid().optional(),
   district_id: Joi.string().guid().optional(),
   star_rating_min: Joi.number().min(0).max(5).optional(),
@@ -40,7 +40,7 @@ const updateHotelSchema = Joi.object({
   contact_email: Joi.string().email().max(255).optional(),
   contact_phone: Joi.string().max(20).optional(),
   is_active: Joi.boolean().optional(),
-  status: Joi.string().valid("pending", "active", "rejected").optional(),
+  status: Joi.string().valid("pending", "approved", "rejected").optional(),
 });
 
 module.exports = {
