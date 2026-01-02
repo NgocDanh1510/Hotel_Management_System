@@ -27,7 +27,7 @@ router.use(authenticateToken);
  */
 router.post(
   "/",
-  requirePermission("hotel.create"),
+  requirePermission("hotel.manage_all"),
   validateSchema(createHotelSchema),
   adminHotelsController.createHotel,
 );
@@ -39,7 +39,7 @@ router.post(
  */
 router.get(
   "/",
-  requirePermission("hotel.read_all"),
+  requirePermission("hotel.manage_all"),
 
   adminHotelsController.listHotels,
 );
@@ -51,7 +51,7 @@ router.get(
  */
 router.put(
   "/:id",
-  requireAnyPermission(["hotel.manage_own", "hotel.manage_all"]),
+  requirePermission("hotel.manage_all"),
   validateSchema(updateHotelSchema),
   adminHotelsController.updateHotel,
 );
@@ -73,7 +73,7 @@ router.delete(
  */
 router.get(
   "/:hotelId/room-types",
-  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  requirePermission("room.manage_all"),
   adminRoomTypeController.listRoomTypes,
 );
 
@@ -83,7 +83,7 @@ router.get(
  */
 router.post(
   "/:hotelId/room-types",
-  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  requirePermission("room.manage_all"),
   validateSchema(createRoomTypeSchema),
   adminRoomTypeController.createRoomType,
 );

@@ -4,7 +4,6 @@ const paymentController = require("../../controllers/admin/payment.controller");
 const {
   authenticateToken,
   requirePermission,
-  requireAnyPermission,
 } = require("../../middlewares/auth.middleware");
 const { validateSchema, validateQuery } = require("../../middlewares/validate.middleware");
 const { listAdminPaymentsQuerySchema, refundPaymentSchema } = require("../../validations/schemaJoi/payment.validation");
@@ -17,7 +16,7 @@ const { listAdminPaymentsQuerySchema, refundPaymentSchema } = require("../../val
 router.get(
   "/",
   authenticateToken,
-  requireAnyPermission(["payment.read_own_hotel", "payment.read_all"]),
+  requirePermission("payment.read_all"),
   validateQuery(listAdminPaymentsQuerySchema),
   paymentController.listAllPayments
 );

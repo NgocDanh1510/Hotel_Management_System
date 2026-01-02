@@ -13,27 +13,7 @@ class ImageService {
    * @returns {Promise<Object>} Success and failed uploads
    */
   async uploadImages(files, entityType, entityId, user) {
-    // 1. Check entity existence and permission
-    let ownerId;
-    if (entityType === "hotel") {
-      const hotel = await Hotel.findByPk(entityId);
-      if (!hotel) throw this._error("Hotel not found", 404);
-      ownerId = hotel.owner_id;
-    } else if (entityType === "room_type") {
-      const roomType = await RoomType.findByPk(entityId, {
-        include: [{ model: Hotel, attributes: ["owner_id"] }],
-      });
-      if (!roomType) throw this._error("Room type not found", 404);
-      // Depending on association setup, it might be roomType.Hotel or we fetch manually
-      const hotel = await Hotel.findByPk(roomType.hotel_id);
-      ownerId = hotel.owner_id;
-    } else {
-      throw this._error("Invalid entity type", 400);
-    }
-
-    if (!this._hasPermission(user, ownerId)) {
-      throw this._error("You do not have permission to manage images for this hotel", 403);
-    }
+    await this._assertCanManageEntity(entityType, entityId, user);
 
     // 2. Upload to Cloudinary in parallel (Settled to handle partial success)
     const uploadPromises = files.map((file) => this._uploadToCloudinary(file));
@@ -101,7 +81,9 @@ class ImageService {
    * @param {Array} imagesData - [{ id, sort_order }]
    * @returns {Promise<void>}
    */
-  async reorderImages(imagesData) {
+  async reorderImages(imagesData, user) {
+    await this._assertCanManageImages(imagesData.map((item) => item.id), user);
+
     const transaction = await sequelize.transaction();
     try {
       for (const item of imagesData) {
@@ -123,9 +105,10 @@ class ImageService {
    * @param {string} imageId - Image ID
    * @returns {Promise<Object>} Updated image
    */
-  async setPrimaryImage(imageId) {
+  async setPrimaryImage(imageId, user) {
     const targetImage = await Image.findByPk(imageId);
     if (!targetImage) throw this._error("Image not found", 404);
+    await this._assertCanManageEntity(targetImage.entity_type, targetImage.entity_id, user);
 
     const transaction = await sequelize.transaction();
     try {
@@ -159,9 +142,10 @@ class ImageService {
    * @param {string} imageId - Image ID
    * @returns {Promise<void>}
    */
-  async deleteImage(imageId) {
+  async deleteImage(imageId, user) {
     const image = await Image.findByPk(imageId);
     if (!image) throw this._error("Image not found", 404);
+    await this._assertCanManageEntity(image.entity_type, image.entity_id, user);
 
     // 1. Delete from Cloudinary (ignore errors to proceed with DB deletion if image missing from Cloudinary)
     cloudinary.uploader.destroy(image.public_id).catch((err) => {
@@ -198,10 +182,68 @@ class ImageService {
   // --- Private Helpers ---
 
   _hasPermission(user, ownerId) {
+    if (!user) return true;
     const perms = user.permissions || [];
     if (perms.includes("image.manage_all")) return true;
     if (perms.includes("image.manage_own_hotel") && ownerId === user.user_id) return true;
     return false;
+  }
+
+  async _assertCanManageEntity(entityType, entityId, user) {
+    const ownerId = await this._getEntityOwnerId(entityType, entityId);
+
+    if (!this._hasPermission(user, ownerId)) {
+      throw this._error("You do not have permission to manage images for this hotel", 403);
+    }
+  }
+
+  async _assertCanManageImages(imageIds, user) {
+    if (!user || (user.permissions || []).includes("image.manage_all")) {
+      return;
+    }
+
+    const images = await Image.findAll({
+      where: { id: { [Op.in]: imageIds } },
+      attributes: ["id", "entity_type", "entity_id"],
+    });
+
+    if (images.length !== imageIds.length) {
+      throw this._error("One or more images not found", 404);
+    }
+
+    await Promise.all(
+      images.map((image) =>
+        this._assertCanManageEntity(image.entity_type, image.entity_id, user),
+      ),
+    );
+  }
+
+  async _getEntityOwnerId(entityType, entityId) {
+    if (entityType === "hotel") {
+      const hotel = await Hotel.findByPk(entityId, {
+        attributes: ["owner_id"],
+      });
+
+      if (!hotel) {
+        throw this._error("Hotel not found", 404);
+      }
+
+      return hotel.owner_id;
+    }
+
+    if (entityType === "room_type") {
+      const roomType = await RoomType.findByPk(entityId, {
+        include: [{ model: Hotel, attributes: ["owner_id"] }],
+      });
+
+      if (!roomType) {
+        throw this._error("Room type not found", 404);
+      }
+
+      return roomType.Hotel?.owner_id;
+    }
+
+    throw this._error("Invalid entity type", 400);
   }
 
   _error(message, statusCode) {

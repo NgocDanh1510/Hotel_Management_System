@@ -20,7 +20,7 @@ const {
 router.get(
   "/",
   authenticateToken,
-  requirePermission("review.read_all"),
+  requirePermission("review.moderate_all"),
   validateQuery(listAdminReviewsQuerySchema),
   reviewController.listAllReviews
 );

@@ -38,9 +38,12 @@ const uploadImages = async (req, res, next) => {
  */
 const reorderImages = async (req, res, next) => {
   try {
-    await imageService.reorderImages(req.body.images);
+    await imageService.reorderImages(req.body.images, req.user);
     return sendSuccess(res, { message: "Images reordered successfully" });
   } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, { statusCode: error.statusCode, message: error.message });
+    }
     console.error("Reorder images error:", error);
     next(error);
   }
@@ -52,7 +55,7 @@ const reorderImages = async (req, res, next) => {
 const setPrimaryImage = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const image = await imageService.setPrimaryImage(id);
+    const image = await imageService.setPrimaryImage(id, req.user);
     return sendSuccess(res, { message: "Primary image updated successfully", data: image });
   } catch (error) {
     if (error.statusCode) {
@@ -69,7 +72,7 @@ const setPrimaryImage = async (req, res, next) => {
 const deleteImage = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await imageService.deleteImage(id);
+    await imageService.deleteImage(id, req.user);
     return sendSuccess(res, { message: "Image deleted successfully" });
   } catch (error) {
     if (error.statusCode) {

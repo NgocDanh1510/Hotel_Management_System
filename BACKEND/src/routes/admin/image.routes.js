@@ -4,7 +4,7 @@ const imageController = require('../../controllers/admin/image.controller');
 const upload = require('../../middlewares/upload.middleware');
 const {
   authenticateToken,
-  requireAnyPermission,
+  requirePermission,
 } = require('../../middlewares/auth.middleware');
 const { validateSchema } = require('../../middlewares/validate.middleware');
 const { uploadImagesSchema, reorderImagesSchema } = require('../../validations/schemaJoi/image.validation');
@@ -17,7 +17,7 @@ const { uploadImagesSchema, reorderImagesSchema } = require('../../validations/s
 router.post(
   '/upload',
   authenticateToken,
-  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
+  requirePermission('image.manage_all'),
   upload.array('files[]', 10), // Limit to 10 files
   validateSchema(uploadImagesSchema),
   imageController.uploadImages
@@ -31,7 +31,7 @@ router.post(
 router.patch(
   '/reorder',
   authenticateToken,
-  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
+  requirePermission('image.manage_all'),
   validateSchema(reorderImagesSchema),
   imageController.reorderImages
 );
@@ -44,7 +44,7 @@ router.patch(
 router.patch(
   '/:id/set-primary',
   authenticateToken,
-  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
+  requirePermission('image.manage_all'),
   imageController.setPrimaryImage
 );
 
@@ -56,7 +56,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticateToken,
-  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
+  requirePermission('image.manage_all'),
   imageController.deleteImage
 );
 

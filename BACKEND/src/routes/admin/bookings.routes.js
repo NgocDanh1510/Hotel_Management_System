@@ -4,7 +4,6 @@ const adminBookingController = require("../../controllers/admin/booking.controll
 const {
   authenticateToken,
   requirePermission,
-  requireAnyPermission,
 } = require("../../middlewares/auth.middleware");
 const { validateSchema, validateQuery } = require("../../middlewares/validate.middleware");
 const {
@@ -22,7 +21,7 @@ router.use(authenticateToken);
  */
 router.get(
   "/",
-  requireAnyPermission(["booking.read_own_hotel", "booking.read_all"]),
+  requirePermission("booking.read_all"),
   validateQuery(listAdminBookingsQuerySchema),
   adminBookingController.listAllBookings
 );
@@ -34,10 +33,7 @@ router.get(
  */
 router.patch(
   "/:id/status",
-  requireAnyPermission([
-    "booking.update_status_own_hotel",
-    "booking.update_status_all",
-  ]),
+  requirePermission("booking.update_status_all"),
   validateSchema(updateBookingStatusSchema),
   adminBookingController.updateBookingStatus
 );
