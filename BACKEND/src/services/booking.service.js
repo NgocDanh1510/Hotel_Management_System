@@ -14,12 +14,13 @@ const { Op } = require("sequelize");
 // ===== State machine for booking status transitions =====
 const ALLOWED_TRANSITIONS = {
   pending: ["confirmed", "cancelled"],
-  confirmed: ["checked_in", "cancelled"],
+  confirmed: ["checked_in", "cancelled", "no_show"],
   checked_in: ["checked_out"],
   // Terminal states — no transitions allowed
   checked_out: [],
   cancelled: [],
   cancellation_pending: [],
+  no_show: [],
 };
 
 class BookingService {
@@ -829,6 +830,74 @@ class BookingService {
       previous_status: currentStatus,
       status: newStatus,
       refund_triggered: refundTriggered,
+      updated_at: booking.updated_at,
+    };
+  }
+
+  /**
+   * Mark a confirmed booking as no-show.
+   *
+   * @param {string} bookingId
+   * @param {Object} user
+   * @returns {Promise<Object>}
+   */
+  async setBookingNoShow(bookingId, user) {
+    const booking = await Booking.findByPk(bookingId, {
+      include: [
+        { model: Hotel, attributes: ["id", "name", "owner_id"] },
+        { model: Room, attributes: ["id", "room_number"] },
+      ],
+    });
+
+    if (!booking) {
+      const error = new Error("Booking not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const perms = user.permissions || [];
+    if (!perms.includes("booking.set_no_show")) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (booking.Hotel?.owner_id !== user.user_id) {
+      const error = new Error(
+        "You do not have permission to manage bookings for this hotel",
+      );
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (booking.status !== "confirmed") {
+      const error = new Error(
+        `Cannot mark booking with status '${booking.status}' as no-show`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    if (booking.check_in > today) {
+      const error = new Error(
+        `Cannot mark no-show before the check-in date (${booking.check_in})`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await booking.update({ status: "no_show" });
+
+    return {
+      id: booking.id,
+      hotel_name: booking.Hotel?.name || null,
+      room_number: booking.Room?.room_number || null,
+      check_in: booking.check_in,
+      check_out: booking.check_out,
+      total_price: parseFloat(booking.total_price),
+      previous_status: "confirmed",
+      status: "no_show",
       updated_at: booking.updated_at,
     };
   }
