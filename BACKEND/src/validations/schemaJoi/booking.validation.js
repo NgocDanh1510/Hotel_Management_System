@@ -17,7 +17,8 @@ const listMyBookingsQuerySchema = Joi.object({
       "checked_in",
       "checked_out",
       "cancelled",
-      "cancellation_pending"
+      "cancellation_pending",
+      "no_show"
     )
     .optional(),
   check_in_from: Joi.date().iso().optional(),
@@ -39,7 +40,8 @@ const listAdminBookingsQuerySchema = Joi.object({
         "checked_in",
         "checked_out",
         "cancelled",
-        "cancellation_pending"
+        "cancellation_pending",
+        "no_show"
       ),
       Joi.array().items(
         Joi.string().valid(
@@ -48,7 +50,8 @@ const listAdminBookingsQuerySchema = Joi.object({
           "checked_in",
           "checked_out",
           "cancelled",
-          "cancellation_pending"
+          "cancellation_pending",
+          "no_show"
         )
       )
     )

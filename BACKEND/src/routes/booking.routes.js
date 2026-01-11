@@ -34,7 +34,6 @@ router.get(
   authenticateToken,
   requireAnyPermission([
     "booking.read_own",
-    "booking.read_own_hotel",
     "booking.read_all",
   ]),
   bookingController.getBookingDetail
@@ -50,7 +49,6 @@ router.post(
   authenticateToken,
   requireAnyPermission([
     "booking.cancel_own",
-    "booking.cancel_own_hotel",
     "booking.cancel_all",
   ]),
   bookingController.cancelBooking
@@ -66,7 +64,6 @@ router.get(
   authenticateToken,
   requireAnyPermission([
     "booking.read_own",
-    "booking.read_own_hotel",
     "booking.read_all",
   ]),
   bookingController.getBookingInvoice
