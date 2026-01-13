@@ -3,7 +3,7 @@ const router = express.Router();
 const adminRoomController = require("../../controllers/admin/room.controller");
 const {
   authenticateToken,
-  requireAnyPermission,
+  requirePermission,
 } = require("../../middlewares/auth.middleware");
 const { validateSchema } = require("../../middlewares/validate.middleware");
 const {
@@ -20,7 +20,7 @@ router.use(authenticateToken);
  */
 router.get(
   "/",
-  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  requirePermission("room.manage_all"),
   adminRoomController.listRooms
 );
 
@@ -30,7 +30,7 @@ router.get(
  */
 router.patch(
   "/bulk-status",
-  requireAnyPermission(["room.set_availability", "room.manage_all"]),
+  requirePermission("room.manage_all"),
   validateSchema(bulkUpdateStatusSchema),
   adminRoomController.bulkUpdateStatus
 );
@@ -41,7 +41,7 @@ router.patch(
  */
 router.put(
   "/:id",
-  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  requirePermission("room.manage_all"),
   validateSchema(updateRoomSchema),
   adminRoomController.updateRoom
 );
