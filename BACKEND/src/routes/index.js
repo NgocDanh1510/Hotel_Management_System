@@ -20,6 +20,7 @@ const {
 
 const authRoutes = require("./auth.routes");
 const adminRoutes = require("./admin");
+const partnerRoutes = require("./partner");
 const hotelRoutes = require("./hotel.routes");
 const bookingRoutes = require("./booking.routes");
 const reviewRoutes = require("./review.routes");
@@ -30,6 +31,7 @@ const userRoutes = require("./user.routes");
 
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
+router.use("/partner", partnerRoutes);
 router.use("/hotels", hotelRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/reviews", reviewRoutes);
