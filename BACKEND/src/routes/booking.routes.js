@@ -32,7 +32,11 @@ router.post(
 router.get(
   "/:id",
   authenticateToken,
-  requireAnyPermission(["booking.read_own", "booking.read_all"]),
+  requireAnyPermission([
+    "booking.read_own",
+    "booking.read_own_hotel",
+    "booking.read_all",
+  ]),
   bookingController.getBookingDetail
 );
 
@@ -44,7 +48,11 @@ router.get(
 router.post(
   "/:id/cancel",
   authenticateToken,
-  requireAnyPermission(["booking.cancel_own", "booking.cancel_all"]),
+  requireAnyPermission([
+    "booking.cancel_own",
+    "booking.cancel_own_hotel",
+    "booking.cancel_all",
+  ]),
   bookingController.cancelBooking
 );
 
@@ -56,7 +64,11 @@ router.post(
 router.get(
   "/:id/invoice",
   authenticateToken,
-  requireAnyPermission(["booking.read_own", "booking.read_all"]),
+  requireAnyPermission([
+    "booking.read_own",
+    "booking.read_own_hotel",
+    "booking.read_all",
+  ]),
   bookingController.getBookingInvoice
 );
 

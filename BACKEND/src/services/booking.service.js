@@ -203,7 +203,7 @@ class BookingService {
       include: [
         {
           model: Hotel,
-          attributes: ["id", "name", "address"],
+          attributes: ["id", "name", "address", "owner_id"],
           include: [
             {
               model: District,
@@ -234,7 +234,11 @@ class BookingService {
     // Permission check
     const perms = user.permissions || [];
     const canReadAll = perms.includes("booking.read_all");
-    if (!canReadAll && booking.user_id !== user.user_id) {
+    const canReadOwnHotel = perms.includes("booking.read_own_hotel");
+    const isBookingOwner = booking.user_id === user.user_id;
+    const isHotelOwner = booking.Hotel?.owner_id === user.user_id;
+
+    if (!canReadAll && !isBookingOwner && !(canReadOwnHotel && isHotelOwner)) {
       const error = new Error(
         "You do not have permission to view this booking",
       );
@@ -243,6 +247,13 @@ class BookingService {
     }
 
     const plain = booking.get({ plain: true });
+    const hotelData = plain.Hotel
+      ? {
+          id: plain.Hotel.id,
+          name: plain.Hotel.name,
+          address: plain.Hotel.address,
+        }
+      : null;
 
     // On-the-fly expiry
     let effectiveStatus = plain.status;
@@ -257,11 +268,13 @@ class BookingService {
     return {
       id: plain.id,
       user: plain.User,
-      hotel: {
-        ...plain.Hotel,
-        district: plain.Hotel?.District?.name || null,
-        city: plain.Hotel?.District?.City?.name || null,
-      },
+      hotel: hotelData
+        ? {
+            ...hotelData,
+            district: plain.Hotel?.District?.name || null,
+            city: plain.Hotel?.District?.City?.name || null,
+          }
+        : null,
       room: plain.Room,
       room_type: plain.RoomType,
       check_in: plain.check_in,
@@ -294,7 +307,7 @@ class BookingService {
     const booking = await Booking.findByPk(bookingId, {
       include: [
         { model: Payment, attributes: ["id", "status", "amount", "gateway"] },
-        { model: Hotel, attributes: ["id", "name"] },
+        { model: Hotel, attributes: ["id", "name", "owner_id"] },
         { model: Room, attributes: ["id", "room_number"] },
       ],
     });
@@ -308,7 +321,11 @@ class BookingService {
     // Permission: cancel_own requires ownership
     const perms = user.permissions || [];
     const canCancelAll = perms.includes("booking.cancel_all");
-    if (!canCancelAll && booking.user_id !== user.user_id) {
+    const canCancelOwnHotel = perms.includes("booking.cancel_own_hotel");
+    const isBookingOwner = booking.user_id === user.user_id;
+    const isHotelOwner = booking.Hotel?.owner_id === user.user_id;
+
+    if (!canCancelAll && !isBookingOwner && !(canCancelOwnHotel && isHotelOwner)) {
       const error = new Error(
         "You do not have permission to cancel this booking",
       );
@@ -494,7 +511,7 @@ class BookingService {
    * @param {Object} query - Filters, search, sort, pagination
    * @returns {Promise<Object>} Bookings list + pagination meta
    */
-  async listAllBookings(query) {
+  async listAllBookings(query, user = {}) {
     const {
       status,
       hotel_id,
@@ -520,6 +537,19 @@ class BookingService {
     const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 20));
 
     const where = {};
+    const hotelWhere = {};
+
+    const userPermissions = user.permissions || [];
+    const canReadAll = userPermissions.includes("booking.read_all");
+    const canReadOwnHotel = userPermissions.includes("booking.read_own_hotel");
+
+    if (!canReadAll && canReadOwnHotel) {
+      hotelWhere.owner_id = user.user_id;
+    } else if (!canReadAll && !canReadOwnHotel) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
 
     // Status filter (multi-select)
     if (status) {
@@ -568,19 +598,28 @@ class BookingService {
     }
 
     // Search
+    const hotelInclude = {
+      model: Hotel,
+      attributes: ["id", "name", "district_id"],
+      include: [
+        {
+          model: District,
+          attributes: ["id", "name", "city_id"],
+          include: [{ model: City, attributes: ["id", "name"] }],
+        },
+      ],
+    };
+
+    if (Object.keys(hotelWhere).length > 0) {
+      hotelInclude.where = hotelWhere;
+      hotelInclude.required = true;
+    } else if (q) {
+      hotelInclude.where = {};
+      hotelInclude.required = false;
+    }
+
     const includeOptions = [
-      {
-        model: Hotel,
-        attributes: ["id", "name", "district_id"],
-        include: [
-          {
-            model: District,
-            attributes: ["id", "name", "city_id"],
-            include: [{ model: City, attributes: ["id", "name"] }],
-          },
-        ],
-        ...(q ? { where: {}, required: false } : {}),
-      },
+      hotelInclude,
       {
         model: Room,
         attributes: ["id", "room_number"],
@@ -802,15 +841,15 @@ class BookingService {
    * Get invoice for a booking.
    *
    * @param {string} bookingId - Booking ID
-   * @param {string} userId - Authenticated user's ID
+   * @param {Object} user - Authenticated user's context
    * @returns {Promise<Object>} Invoice data
    */
-  async getBookingInvoice(bookingId, userId) {
+  async getBookingInvoice(bookingId, user) {
     const booking = await Booking.findByPk(bookingId, {
       include: [
         {
           model: Hotel,
-          attributes: ["id", "name", "address"],
+          attributes: ["id", "name", "address", "owner_id"],
           include: [
             {
               model: District,
@@ -832,24 +871,39 @@ class BookingService {
       throw error;
     }
 
-    if (booking.user_id !== userId) {
+    const perms = user.permissions || [];
+    const canReadAll = perms.includes("booking.read_all");
+    const canReadOwnHotel = perms.includes("booking.read_own_hotel");
+    const isBookingOwner = booking.user_id === user.user_id;
+    const isHotelOwner = booking.Hotel?.owner_id === user.user_id;
+
+    if (!canReadAll && !isBookingOwner && !(canReadOwnHotel && isHotelOwner)) {
       const error = new Error("You do not have permission to view this invoice");
       error.statusCode = 403;
       throw error;
     }
 
     const plain = booking.get({ plain: true });
+    const hotelData = plain.Hotel
+      ? {
+          id: plain.Hotel.id,
+          name: plain.Hotel.name,
+          address: plain.Hotel.address,
+        }
+      : null;
 
     return {
       invoice_id: `INV-${plain.id.substring(0, 8).toUpperCase()}`,
       booking_id: plain.id,
       issued_at: new Date(),
       customer: plain.User,
-      hotel: {
-        ...plain.Hotel,
-        district: plain.Hotel?.District?.name || null,
-        city: plain.Hotel?.District?.City?.name || null,
-      },
+      hotel: hotelData
+        ? {
+            ...hotelData,
+            district: plain.Hotel?.District?.name || null,
+            city: plain.Hotel?.District?.City?.name || null,
+          }
+        : null,
       room_details: {
         room_number: plain.Room?.room_number,
         room_type: plain.RoomType?.name,

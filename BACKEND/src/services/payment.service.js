@@ -1,4 +1,4 @@
-const { Payment, Booking, User, sequelize } = require("../models");
+const { Payment, Booking, Hotel, User, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 class PaymentService {
@@ -80,7 +80,7 @@ class PaymentService {
    * @param {Object} query - Filter, sort, pagination
    * @returns {Promise<Object>} Payments list + meta
    */
-  async listAllPayments(query) {
+  async listAllPayments(query, user = {}) {
     const {
       status,
       type,
@@ -100,6 +100,19 @@ class PaymentService {
     const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 20));
 
     const where = {};
+    const hotelWhere = {};
+
+    const userPermissions = user.permissions || [];
+    const canReadAll = userPermissions.includes("payment.read_all");
+    const canReadOwnHotel = userPermissions.includes("payment.read_own_hotel");
+
+    if (!canReadAll && canReadOwnHotel) {
+      hotelWhere.owner_id = user.user_id;
+    } else if (!canReadAll && !canReadOwnHotel) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
     if (status) where.status = status;
     if (type) where.type = type;
     if (gateway) where.gateway = gateway;
@@ -117,7 +130,27 @@ class PaymentService {
       if (amount_max !== undefined) where.amount[Op.lte] = amount_max;
     }
 
-    const include = [{ model: User, attributes: ["id", "name", "email"] }];
+    const bookingInclude = {
+      model: Booking,
+      attributes: ["id", "hotel_id", "user_id"],
+      include: [
+        {
+          model: Hotel,
+          attributes: ["id", "owner_id"],
+        },
+      ],
+    };
+
+    if (Object.keys(hotelWhere).length > 0) {
+      bookingInclude.required = true;
+      bookingInclude.include[0].where = hotelWhere;
+      bookingInclude.include[0].required = true;
+    }
+
+    const include = [
+      { model: User, attributes: ["id", "name", "email"] },
+      bookingInclude,
+    ];
 
     if (q) {
       where[Op.or] = [
@@ -253,9 +286,15 @@ class PaymentService {
    * @param {string} userId
    * @returns {Promise<Object>}
    */
-  async getPaymentDetail(paymentId, userId) {
+  async getPaymentDetail(paymentId, user) {
     const payment = await Payment.findByPk(paymentId, {
-      include: [{ model: Booking, attributes: ["id", "user_id"] }]
+      include: [
+        {
+          model: Booking,
+          attributes: ["id", "user_id", "hotel_id"],
+          include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+        },
+      ]
     });
 
     if (!payment) {
@@ -264,9 +303,19 @@ class PaymentService {
       throw error;
     }
 
-    // Admins can see all, but here we just check if it's the user's payment.
-    // In a real app, you might inject permissions to allow admins.
-    if (payment.user_id !== userId && payment.Booking?.user_id !== userId) {
+    const perms = user.permissions || [];
+    const canReadAll = perms.includes("payment.read_all");
+    const canReadOwnHotel = perms.includes("payment.read_own_hotel");
+    const isPaymentOwner = payment.user_id === user.user_id;
+    const isBookingOwner = payment.Booking?.user_id === user.user_id;
+    const isHotelOwner = payment.Booking?.Hotel?.owner_id === user.user_id;
+
+    if (
+      !canReadAll &&
+      !isPaymentOwner &&
+      !isBookingOwner &&
+      !(canReadOwnHotel && isHotelOwner)
+    ) {
       const error = new Error("You do not have permission to view this payment");
       error.statusCode = 403;
       throw error;

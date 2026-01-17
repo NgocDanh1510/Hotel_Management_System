@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const paymentController = require("../../controllers/admin/payment.controller");
-const { authenticateToken, requirePermission } = require("../../middlewares/auth.middleware");
+const {
+  authenticateToken,
+  requirePermission,
+  requireAnyPermission,
+} = require("../../middlewares/auth.middleware");
 const { validateSchema, validateQuery } = require("../../middlewares/validate.middleware");
 const { listAdminPaymentsQuerySchema, refundPaymentSchema } = require("../../validations/schemaJoi/payment.validation");
 
@@ -13,7 +17,7 @@ const { listAdminPaymentsQuerySchema, refundPaymentSchema } = require("../../val
 router.get(
   "/",
   authenticateToken,
-  requirePermission("payment.read_all"),
+  requireAnyPermission(["payment.read_own_hotel", "payment.read_all"]),
   validateQuery(listAdminPaymentsQuerySchema),
   paymentController.listAllPayments
 );

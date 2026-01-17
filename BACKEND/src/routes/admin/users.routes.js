@@ -62,6 +62,6 @@ router.put(
  * DELETE /api/v1/admin/users/delete/:id
  * Soft delete a user (set deleted_at)
  */
-router.delete("/delete/:id", adminUsersController.deleteUser);
+router.delete("/delete/:id", requirePermission("user.ban"), adminUsersController.deleteUser);
 
 module.exports = router;

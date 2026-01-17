@@ -22,7 +22,7 @@ router.use(authenticateToken);
  */
 router.get(
   "/",
-  requirePermission("booking.read_all"),
+  requireAnyPermission(["booking.read_own_hotel", "booking.read_all"]),
   validateQuery(listAdminBookingsQuerySchema),
   adminBookingController.listAllBookings
 );

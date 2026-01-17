@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const paymentController = require("../controllers/payment.controller");
-const { authenticateToken, requirePermission } = require("../middlewares/auth.middleware");
+const {
+  authenticateToken,
+  requirePermission,
+  requireAnyPermission,
+} = require("../middlewares/auth.middleware");
 const { validateSchema } = require("../middlewares/validate.middleware");
 const { createPaymentSchema } = require("../validations/schemaJoi/payment.validation");
 
@@ -26,6 +30,11 @@ router.post(
 router.get(
   "/:id",
   authenticateToken,
+  requireAnyPermission([
+    "payment.read_own",
+    "payment.read_own_hotel",
+    "payment.read_all",
+  ]),
   paymentController.getPaymentDetail
 );
 
@@ -37,6 +46,7 @@ router.get(
 router.post(
   "/:id/mock-complete",
   authenticateToken,
+  requirePermission("payment.create"),
   paymentController.mockCompletePayment
 );
 

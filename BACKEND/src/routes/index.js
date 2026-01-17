@@ -42,10 +42,16 @@ router.use("/user", userRoutes);
  * GET /api/v1/account
  * Get authenticated user's profile
  */
-router.get("/account", authenticateToken, authController.getProfile);
+router.get(
+  "/account",
+  authenticateToken,
+  requirePermission("account.read_own"),
+  authController.getProfile,
+);
 router.put(
   "/account",
   authenticateToken,
+  requirePermission("account.update_own"),
   validateSchema(updateProfileSchema),
   authController.updateProfile,
 );

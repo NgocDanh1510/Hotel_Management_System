@@ -6,7 +6,7 @@ const { sendSuccess, sendError } = require("../../utils/apiResponse");
  */
 const listAllPayments = async (req, res, next) => {
   try {
-    const result = await paymentService.listAllPayments(req.query);
+    const result = await paymentService.listAllPayments(req.query, req.user);
     return sendSuccess(res, {
       message: "Payments retrieved successfully",
       data: result.payments,

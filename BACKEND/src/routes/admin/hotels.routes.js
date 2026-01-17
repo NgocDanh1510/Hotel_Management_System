@@ -27,7 +27,7 @@ router.use(authenticateToken);
  */
 router.post(
   "/",
-  requireAnyPermission(["hotel.create", "hotel.manage_all"]),
+  requirePermission("hotel.create"),
   validateSchema(createHotelSchema),
   adminHotelsController.createHotel,
 );
@@ -95,7 +95,16 @@ router.post(
  */
 router.put(
   "/change-status/:id",
-  requirePermission("hotel.manage_all"),
+  (req, res, next) => {
+    if (req.body.status === "approved") {
+      return requirePermission("hotel.approve")(req, res, next);
+    }
+    if (req.body.status === "rejected") {
+      return requirePermission("hotel.reject")(req, res, next);
+    }
+    // TODO: verify permission
+    return requirePermission("hotel.manage_all")(req, res, next);
+  },
   adminHotelsController.updateHotelStatus,
 );
 module.exports = router;

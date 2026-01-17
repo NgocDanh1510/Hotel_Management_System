@@ -41,23 +41,12 @@ router.patch(
 /**
  * @route PATCH /api/v1/admin/reviews/:id
  * @desc Moderate a single review
- * @access Private (review.moderate_own_hotel OR review.moderate_all)
+ * @access Private (review.moderate_all)
  */
 router.patch(
   "/:id",
   authenticateToken,
-  // Note: Permission check for 'moderate_own_hotel' is handled in the service
-  // but we need to ensure they have at least one of the two permissions.
-  // Using an OR logic for middleware if possible, or just require at least one.
-  // For now, let's allow if they have either.
-  (req, res, next) => {
-    const perms = req.user.permissions || [];
-    if (perms.includes("review.moderate_all") || perms.includes("review.moderate_own_hotel")) {
-      return next();
-    }
-    const { sendError } = require("../../utils/apiResponse");
-    return sendError(res, { statusCode: 403, message: "Insufficient permissions" });
-  },
+  requirePermission("review.moderate_all"),
   validateSchema(updateReviewStatusSchema),
   reviewController.updateReviewStatus
 );

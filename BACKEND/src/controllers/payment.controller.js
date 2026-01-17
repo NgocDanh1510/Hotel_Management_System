@@ -34,9 +34,7 @@ const createPayment = async (req, res, next) => {
 const getPaymentDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.user_id;
-
-    const payment = await paymentService.getPaymentDetail(id, userId);
+    const payment = await paymentService.getPaymentDetail(id, req.user);
 
     return sendSuccess(res, {
       message: "Payment detail retrieved successfully",

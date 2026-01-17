@@ -30,7 +30,7 @@ router.get(
  */
 router.patch(
   "/bulk-status",
-  requireAnyPermission(["room.manage_own_hotel", "room.manage_all"]),
+  requireAnyPermission(["room.set_availability", "room.manage_all"]),
   validateSchema(bulkUpdateStatusSchema),
   adminRoomController.bulkUpdateStatus
 );

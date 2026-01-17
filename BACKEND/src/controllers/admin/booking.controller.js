@@ -7,7 +7,10 @@ const { sendSuccess, sendError } = require("../../utils/apiResponse");
  */
 const listAllBookings = async (req, res, next) => {
   try {
-    const { bookings, meta } = await bookingService.listAllBookings(req.query);
+    const { bookings, meta } = await bookingService.listAllBookings(
+      req.query,
+      req.user,
+    );
 
     return sendSuccess(res, {
       message: "Bookings retrieved successfully",

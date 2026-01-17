@@ -23,7 +23,7 @@ router.use(authenticateToken);
  * GET /api/v1/user/profile
  * Get authenticated user's profile
  */
-router.get("/profile", userController.getProfile);
+router.get("/profile", requirePermission("account.read_own"), userController.getProfile);
 
 /**
  * PUT /api/v1/user/profile
@@ -31,6 +31,7 @@ router.get("/profile", userController.getProfile);
  */
 router.put(
   "/profile",
+  requirePermission("account.update_own"),
   validateSchema(updateProfileSchema),
   userController.updateProfile,
 );
@@ -41,6 +42,7 @@ router.put(
  */
 router.put(
   "/password",
+  requirePermission("account.update_own"),
   validateSchema(updatePasswordSchema),
   userController.updatePassword,
 );
@@ -51,6 +53,7 @@ router.put(
  */
 router.put(
   "/email",
+  requirePermission("account.update_own"),
   validateSchema(updateEmailSchema),
   userController.updateEmail,
 );
@@ -73,6 +76,7 @@ router.get(
  */
 router.get(
   "/payments",
+  requirePermission("payment.read_own"),
   userController.listMyPayments,
 );
 
@@ -82,6 +86,7 @@ router.get(
  */
 router.get(
   "/reviews",
+  requirePermission("review.read_all"),
   userController.listMyReviews,
 );
 
@@ -91,6 +96,7 @@ router.get(
  */
 router.get(
   "/reviews/:id",
+  requirePermission("review.read_all"),
   userController.getMyReviewDetail,
 );
 
@@ -100,6 +106,7 @@ router.get(
  */
 router.put(
   "/reviews/:id",
+  requirePermission("review.edit_own"),
   userController.updateMyReview,
 );
 
@@ -109,6 +116,7 @@ router.put(
  */
 router.delete(
   "/reviews/:id",
+  requirePermission("review.delete_own"),
   userController.deleteMyReview,
 );
 

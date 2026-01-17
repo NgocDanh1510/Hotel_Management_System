@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const imageController = require('../../controllers/admin/image.controller');
 const upload = require('../../middlewares/upload.middleware');
-const { authenticateToken, requirePermission } = require('../../middlewares/auth.middleware');
+const {
+  authenticateToken,
+  requireAnyPermission,
+} = require('../../middlewares/auth.middleware');
 const { validateSchema } = require('../../middlewares/validate.middleware');
 const { uploadImagesSchema, reorderImagesSchema } = require('../../validations/schemaJoi/image.validation');
 
@@ -14,14 +17,7 @@ const { uploadImagesSchema, reorderImagesSchema } = require('../../validations/s
 router.post(
   '/upload',
   authenticateToken,
-  (req, res, next) => {
-    const perms = req.user.permissions || [];
-    if (perms.includes('image.manage_all') || perms.includes('image.manage_own_hotel')) {
-      return next();
-    }
-    const { sendError } = require('../../utils/apiResponse');
-    return sendError(res, { statusCode: 403, message: 'Insufficient permissions' });
-  },
+  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
   upload.array('files[]', 10), // Limit to 10 files
   validateSchema(uploadImagesSchema),
   imageController.uploadImages
@@ -35,14 +31,7 @@ router.post(
 router.patch(
   '/reorder',
   authenticateToken,
-  (req, res, next) => {
-    const perms = req.user.permissions || [];
-    if (perms.includes('image.manage_all') || perms.includes('image.manage_own_hotel')) {
-      return next();
-    }
-    const { sendError } = require('../../utils/apiResponse');
-    return sendError(res, { statusCode: 403, message: 'Insufficient permissions' });
-  },
+  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
   validateSchema(reorderImagesSchema),
   imageController.reorderImages
 );
@@ -55,14 +44,7 @@ router.patch(
 router.patch(
   '/:id/set-primary',
   authenticateToken,
-  (req, res, next) => {
-    const perms = req.user.permissions || [];
-    if (perms.includes('image.manage_all') || perms.includes('image.manage_own_hotel')) {
-      return next();
-    }
-    const { sendError } = require('../../utils/apiResponse');
-    return sendError(res, { statusCode: 403, message: 'Insufficient permissions' });
-  },
+  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
   imageController.setPrimaryImage
 );
 
@@ -74,14 +56,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticateToken,
-  (req, res, next) => {
-    const perms = req.user.permissions || [];
-    if (perms.includes('image.manage_all') || perms.includes('image.manage_own_hotel')) {
-      return next();
-    }
-    const { sendError } = require('../../utils/apiResponse');
-    return sendError(res, { statusCode: 403, message: 'Insufficient permissions' });
-  },
+  requireAnyPermission(['image.manage_own_hotel', 'image.manage_all']),
   imageController.deleteImage
 );
 

@@ -86,9 +86,7 @@ const cancelBooking = async (req, res, next) => {
 const getBookingInvoice = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.user_id || req.user.id;
-    
-    const invoice = await bookingService.getBookingInvoice(id, userId);
+    const invoice = await bookingService.getBookingInvoice(id, req.user);
     
     return sendSuccess(res, {
       message: "Booking invoice retrieved successfully",

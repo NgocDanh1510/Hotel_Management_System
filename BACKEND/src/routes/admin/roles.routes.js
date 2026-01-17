@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const rolesController = require("../../controllers/admin/roles.controller");
-const { authenticate } = require("../../middlewares/auth.middleware");
+const {
+  authenticate,
+  requirePermission,
+} = require("../../middlewares/auth.middleware");
 const {
   validateRequest,
   validateSchema,
@@ -13,6 +16,7 @@ const {
 } = require("../../validations/schemaJoi/admin/roles.validation");
 
 router.use(authenticate);
+router.use(requirePermission("role.manage"));
 
 router.get("/", rolesController.listRoles);
 
@@ -30,6 +34,7 @@ router.delete("/:id", rolesController.deleteRole);
 
 router.put(
   "/:id/permissions",
+  requirePermission("permission.manage"),
   validateSchema(assignPermissionsSchema),
   rolesController.assignPermissions,
 );
