@@ -6,7 +6,7 @@
   font-family: "Segoe UI Variable", "Trebuchet MS", "Avenir Next", sans-serif;
 }
 
-html {
+/* html {
   scroll-behavior: smooth;
 }
 
@@ -44,4 +44,4 @@ textarea {
 
 ::selection {
   background: rgba(245, 158, 11, 0.22);
-}
+} */

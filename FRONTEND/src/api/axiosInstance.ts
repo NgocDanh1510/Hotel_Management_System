@@ -89,6 +89,9 @@ publicAxios.interceptors.response.use(
     return res;
   },
   (error) => {
+    if (error.response && error.response.data) {
+      return Promise.reject(error.response); // 👈 QUAN TRỌNG
+    }
     return Promise.reject(error);
   },
 );

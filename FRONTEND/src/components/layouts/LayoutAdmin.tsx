@@ -61,6 +61,7 @@ const LayoutAdmin = () => {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === "/admin"}
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${

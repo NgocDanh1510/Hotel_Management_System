@@ -23,6 +23,8 @@ const listMyBookingsQuerySchema = Joi.object({
   check_in_from: Joi.date().iso().optional(),
   check_in_to: Joi.date().iso().optional(),
   hotel_id: Joi.string().guid().optional(),
+  district_id: Joi.string().guid().optional(),
+  city_id: Joi.string().guid().optional(),
   sort: Joi.string().valid("created_at", "check_in").default("created_at"),
   offset: Joi.number().integer().min(0).default(0),
   limit: Joi.number().integer().min(1).max(50).default(10),
@@ -62,6 +64,8 @@ const listAdminBookingsQuerySchema = Joi.object({
   created_at_to: Joi.date().iso().optional(),
   total_price_min: Joi.number().min(0).optional(),
   total_price_max: Joi.number().min(0).optional(),
+  district_id: Joi.string().guid().optional(),
+  city_id: Joi.string().guid().optional(),
   q: Joi.string().allow("").optional(),
   sort: Joi.string()
     .valid(

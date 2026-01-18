@@ -5,6 +5,8 @@ const {
   Hotel,
   Payment,
   User,
+  District,
+  City,
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
@@ -201,7 +203,14 @@ class BookingService {
       include: [
         {
           model: Hotel,
-          attributes: ["id", "name", "address", "city", "country"],
+          attributes: ["id", "name", "address"],
+          include: [
+            {
+              model: District,
+              attributes: ["id", "name"],
+              include: [{ model: City, attributes: ["id", "name"] }],
+            },
+          ],
         },
         { model: Room, attributes: ["id", "room_number", "floor", "status"] },
         {
@@ -248,7 +257,11 @@ class BookingService {
     return {
       id: plain.id,
       user: plain.User,
-      hotel: plain.Hotel,
+      hotel: {
+        ...plain.Hotel,
+        district: plain.Hotel?.District?.name || null,
+        city: plain.Hotel?.District?.City?.name || null,
+      },
       room: plain.Room,
       room_type: plain.RoomType,
       check_in: plain.check_in,
@@ -373,6 +386,8 @@ class BookingService {
       check_in_from,
       check_in_to,
       hotel_id,
+      district_id,
+      city_id,
       sort = "created_at",
       offset = 0,
       limit = 10,
@@ -385,6 +400,13 @@ class BookingService {
 
     if (status) where.status = status;
     if (hotel_id) where.hotel_id = hotel_id;
+
+    if (district_id) {
+      where["$Hotel.district_id$"] = district_id;
+    }
+    if (city_id) {
+      where["$Hotel.District.city_id$"] = city_id;
+    }
 
     if (check_in_from || check_in_to) {
       where.check_in = {};
@@ -401,7 +423,17 @@ class BookingService {
     const { count, rows } = await Booking.findAndCountAll({
       where,
       include: [
-        { model: Hotel, attributes: ["id", "name"] },
+        {
+          model: Hotel,
+          attributes: ["id", "name"],
+          include: [
+            {
+              model: District,
+              attributes: ["id", "name"],
+              include: [{ model: City, attributes: ["id", "name"] }],
+            },
+          ],
+        },
         { model: Room, attributes: ["id", "room_number"] },
         { model: RoomType, attributes: ["id", "name", "base_price"] },
       ],
@@ -425,6 +457,8 @@ class BookingService {
       return {
         id: plain.id,
         hotel_name: plain.Hotel?.name || null,
+        district: plain.Hotel?.District?.name || null,
+        city: plain.Hotel?.District?.City?.name || null,
         room_number: plain.Room?.room_number || null,
         room_type_name: plain.RoomType?.name || null,
         check_in: plain.check_in,
@@ -474,6 +508,8 @@ class BookingService {
       created_at_to,
       total_price_min,
       total_price_max,
+      district_id,
+      city_id,
       q,
       sort = "created_at_desc",
       offset = 0,
@@ -494,6 +530,14 @@ class BookingService {
     if (hotel_id) where.hotel_id = hotel_id;
     if (room_id) where.room_id = room_id;
     if (user_id) where.user_id = user_id;
+
+    if (district_id) {
+      where["$Hotel.district_id$"] = district_id;
+    }
+
+    if (city_id) {
+      where["$Hotel.District.city_id$"] = city_id;
+    }
 
     // Date range filters
     if (check_in_from || check_in_to) {
@@ -527,7 +571,14 @@ class BookingService {
     const includeOptions = [
       {
         model: Hotel,
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "district_id"],
+        include: [
+          {
+            model: District,
+            attributes: ["id", "name", "city_id"],
+            include: [{ model: City, attributes: ["id", "name"] }],
+          },
+        ],
         ...(q ? { where: {}, required: false } : {}),
       },
       {
@@ -595,7 +646,11 @@ class BookingService {
       return {
         id: plain.id,
         user: plain.User || null,
-        hotel: plain.Hotel || null,
+        hotel: {
+          ...plain.Hotel,
+          district: plain.Hotel?.District?.name || null,
+          city: plain.Hotel?.District?.City?.name || null,
+        },
         room: plain.Room || null,
         room_type: plain.RoomType || null,
         check_in: plain.check_in,
@@ -753,7 +808,17 @@ class BookingService {
   async getBookingInvoice(bookingId, userId) {
     const booking = await Booking.findByPk(bookingId, {
       include: [
-        { model: Hotel, attributes: ["id", "name", "address", "city", "country"] },
+        {
+          model: Hotel,
+          attributes: ["id", "name", "address"],
+          include: [
+            {
+              model: District,
+              attributes: ["id", "name"],
+              include: [{ model: City, attributes: ["id", "name"] }],
+            },
+          ],
+        },
         { model: Room, attributes: ["id", "room_number"] },
         { model: RoomType, attributes: ["id", "name", "base_price"] },
         { model: User, attributes: ["id", "name", "email", "phone"] },
@@ -780,7 +845,11 @@ class BookingService {
       booking_id: plain.id,
       issued_at: new Date(),
       customer: plain.User,
-      hotel: plain.Hotel,
+      hotel: {
+        ...plain.Hotel,
+        district: plain.Hotel?.District?.name || null,
+        city: plain.Hotel?.District?.City?.name || null,
+      },
       room_details: {
         room_number: plain.Room?.room_number,
         room_type: plain.RoomType?.name,

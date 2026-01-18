@@ -41,7 +41,9 @@ const HotelCard = ({ hotel }: HotelCardProps) => {
       <div className="space-y-5 p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-slate-500">Điểm đánh giá khách lưu trú</p>
+            <p className="text-sm text-slate-500">
+              Điểm đánh giá khách lưu trú
+            </p>
             <p className="mt-1 text-3xl font-semibold text-slate-900">
               {hotel.avg_rating.toFixed(1)}
             </p>

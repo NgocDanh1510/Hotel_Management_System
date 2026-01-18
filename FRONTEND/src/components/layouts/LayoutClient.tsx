@@ -41,7 +41,7 @@ const LayoutClient = () => {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.18),_transparent_30%),linear-gradient(180deg,#fffaf2_0%,#f7f3ea_36%,#f6f7fb_100%)] text-slate-900">
       <header className="sticky top-0 z-40 border-b border-white/70 bg-[#fffaf0]/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-11/12 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-amber-200/40">
               <Hotel size={20} />
@@ -50,7 +50,9 @@ const LayoutClient = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
                 Stay Ease
               </p>
-              <p className="text-lg font-semibold">Khách sạn cho mọi hành trình</p>
+              <p className="text-lg font-semibold">
+                Khách sạn cho mọi hành trình
+              </p>
             </div>
           </Link>
 
@@ -59,6 +61,7 @@ const LayoutClient = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === "/me"}
                 className={({ isActive }) =>
                   `rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
@@ -179,7 +182,7 @@ const LayoutClient = () => {
         </div>
       ) : null}
 
-      <main className="mx-auto min-h-[calc(100vh-180px)] max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto min-h-[calc(100vh-180px)] max-w-11/12 px-4 py-8 sm:px-6 lg:px-8">
         <Outlet />
       </main>
 

@@ -13,7 +13,12 @@ import {
 import type { HotelListItem } from "@/types/hotel";
 import type { PaginationMeta } from "@/types/common";
 import type { LocationOption } from "@/types/location";
-import { buildSearch, getApiErrorMessage, getDateAfter, getTomorrow } from "@/utils/client";
+import {
+  buildSearch,
+  getApiErrorMessage,
+  getDateAfter,
+  getTomorrow,
+} from "@/utils/client";
 
 const defaultValues = {
   q: "",
@@ -118,10 +123,7 @@ const HotelListPage = () => {
         setMeta(response.meta);
       } catch (fetchError) {
         setError(
-          getApiErrorMessage(
-            fetchError,
-            "Không tải được danh sách khách sạn.",
-          ),
+          getApiErrorMessage(fetchError, "Không tải được danh sách khách sạn."),
         );
         setHotels([]);
       } finally {
@@ -171,9 +173,7 @@ const HotelListPage = () => {
       setHotels((current) => [...current, ...response.data]);
       setMeta(response.meta);
     } catch (fetchError) {
-      setError(
-        getApiErrorMessage(fetchError, "Không tải thêm được dữ liệu."),
-      );
+      setError(getApiErrorMessage(fetchError, "Không tải thêm được dữ liệu."));
     } finally {
       setLoadingMore(false);
     }
@@ -255,7 +255,8 @@ const HotelListPage = () => {
                         ...current,
                         check_in: event.target.value,
                         check_out:
-                          current.check_out && current.check_out < event.target.value
+                          current.check_out &&
+                          current.check_out < event.target.value
                             ? getDateAfter(2)
                             : current.check_out,
                       }))
@@ -427,7 +428,9 @@ const HotelListPage = () => {
                   Kết quả
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                  {loading ? "Đang tìm..." : `${meta?.total || 0} khách sạn phù hợp`}
+                  {loading
+                    ? "Đang tìm..."
+                    : `${meta?.total || 0} khách sạn phù hợp`}
                 </h2>
               </div>
               <Link

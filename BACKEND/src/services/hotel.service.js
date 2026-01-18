@@ -64,44 +64,30 @@ class HotelService {
       if (star_rating_max) ratingWhere[Op.lte] = parseFloat(star_rating_max);
       where.star_rating = ratingWhere;
     }
-
     // Include RoomTypes for price and availability filtering
     const roomTypeInclude = {
       model: RoomType,
       attributes: ["id", "base_price"],
-      required: false,
+      required: true, // 🔥 phải có roomType
     };
-
-    // Availability and guest count filter
     if (check_in && check_out) {
       roomTypeInclude.include = [
         {
           model: Room,
-          attributes: [],
-          required: false,
-          duplicating: false,
+          required: true,
           where: {
             status: { [Op.ne]: "maintenance" },
           },
           include: [
             {
               model: Booking,
-              attributes: [],
               required: false,
               where: {
                 status: "confirmed",
                 [Op.not]: {
                   [Op.or]: [
-                    {
-                      check_out: {
-                        [Op.lte]: check_in, // 11:00 <= new 14:00
-                      },
-                    },
-                    {
-                      check_in: {
-                        [Op.gte]: check_out, // 14:00 >= new 11:00
-                      },
-                    },
+                    { check_out: { [Op.lte]: check_in } },
+                    { check_in: { [Op.gte]: check_out } },
                   ],
                 },
               },
@@ -109,12 +95,6 @@ class HotelService {
           ],
         },
       ];
-
-      roomTypeInclude.group = ["RoomType.id"];
-
-      roomTypeInclude.having = sequelize.literal(`
-    COUNT(Booking.id) = 0
-  `);
     }
 
     include.push(roomTypeInclude);
@@ -136,13 +116,12 @@ class HotelService {
     if (sort === "star_rating") {
       order = [["star_rating", "DESC"]];
     } else if (sort === "price_asc") {
-      order = [[sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")), "ASC"]];
+      order = [
+        [sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")), "ASC"],
+      ];
     } else if (sort === "price_desc") {
       order = [
-        [
-          sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")),
-          "DESC",
-        ],
+        [sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")), "DESC"],
       ];
     } else if (sort === "avg_rating") {
       order = [["avg_rating", "DESC"]];
@@ -153,29 +132,24 @@ class HotelService {
     const offset = (page - 1) * limit;
 
     // Get hotels with aggregations
-    let hotels = await Hotel.findAll({
+    const { count: total, rows: hotels } = await Hotel.findAndCountAll({
       where,
-      include: [
-        ...include,
-        {
-          model: District,
-          attributes: ["id", "name"],
-          include: [{ model: City, attributes: ["id", "name"] }],
-        },
-      ],
+      include: [...include],
       order,
       limit: parseInt(limit),
       offset,
       distinct: true,
       raw: false,
-      subQuery: false,
     });
 
     // Filter by price range if provided
+    let filteredHotels = [...hotels];
+
     if (price_min || price_max) {
-      hotels = hotels.filter((hotel) => {
-        const prices = hotel.RoomTypes.map((rt) => parseFloat(rt.base_price))
-          .filter((price) => !Number.isNaN(price));
+      filteredHotels = hotels.filter((hotel) => {
+        const prices = hotel.RoomTypes.map((rt) =>
+          parseFloat(rt.base_price),
+        ).filter((price) => !Number.isNaN(price));
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         if (price_min && minPrice < parseFloat(price_min)) return false;
         if (price_max && minPrice > parseFloat(price_max)) return false;
@@ -185,7 +159,7 @@ class HotelService {
 
     // Get primary images for each hotel
     const hotelsWithImages = await Promise.all(
-      hotels.map(async (hotel) => {
+      filteredHotels.map(async (hotel) => {
         const primaryImage = await Image.findOne({
           where: {
             entity_type: "hotel",
@@ -195,8 +169,9 @@ class HotelService {
           attributes: ["url"],
         });
 
-        const prices = hotel.RoomTypes.map((rt) => parseFloat(rt.base_price))
-          .filter((price) => !Number.isNaN(price));
+        const prices = hotel.RoomTypes.map((rt) =>
+          parseFloat(rt.base_price),
+        ).filter((price) => !Number.isNaN(price));
         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
         return {
@@ -215,12 +190,6 @@ class HotelService {
     );
 
     // Get total count for pagination
-    const total = await Hotel.count({
-      where,
-      include,
-      distinct: true,
-      subQuery: false,
-    });
 
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
