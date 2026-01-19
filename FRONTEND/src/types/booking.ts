@@ -34,17 +34,25 @@ export interface BookingUser {
 export interface BookingHotel {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
+  address?: string;
+  city?: string;
+  district?: string;
 }
 
 export interface BookingRoom {
   id: string;
   room_number: string;
+  floor?: number;
+  status?: string;
 }
 
 export interface BookingRoomType {
   id: string;
   name: string;
+  max_occupancy?: number;
+  base_price?: number;
+  currency?: string;
 }
 
 export interface BookingDetail {
@@ -64,6 +72,29 @@ export interface BookingDetail {
   payments: Payment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface BookingInvoice {
+  invoice_id: string;
+  booking_id: string;
+  issued_at: string;
+  customer: BookingUser & { phone?: string };
+  hotel: BookingHotel & { address?: string; city?: string };
+  room_details: {
+    room_number?: string;
+    room_type?: string;
+  };
+  stay_details: {
+    check_in: string;
+    check_out: string;
+    guests: number;
+  };
+  billing: {
+    total_price: number;
+    price_per_night: number;
+  };
+  payments: Payment[];
+  status: BookingStatus;
 }
 
 export interface CreateBookingRequest {

@@ -34,7 +34,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   roles: UserRole[];
   booking_summary: BookingSummary;
 }
@@ -45,4 +45,3 @@ export interface UpdateProfileRequest {
   current_password?: string;
   new_password?: string;
 }
-

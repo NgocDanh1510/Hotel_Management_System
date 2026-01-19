@@ -1,73 +1,77 @@
-import React from "react";
 import { Link } from "react-router-dom";
+import { MapPin, Star } from "lucide-react";
 import type { HotelListItem } from "@/types/hotel";
+import { formatCurrency } from "@/utils/client";
 
 interface HotelCardProps {
   hotel: HotelListItem;
 }
 
-const HotelCard: React.FC<HotelCardProps> = ({ hotel }) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
+const fallbackImage =
+  "https://images.unsplash.com/photo-1522798514-97ceb8c4f1c8?auto=format&fit=crop&w=1200&q=80";
 
+const HotelCard = ({ hotel }: HotelCardProps) => {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full border border-gray-100">
-      <Link to={`/hotels/${hotel.slug}`} className="block relative h-48 sm:h-56">
-        <img
-          src={hotel.primary_image_url || "https://via.placeholder.com/400x300?text=No+Image"}
-          alt={hotel.name}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=No+Image";
-          }}
-        />
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium shadow-sm flex items-center space-x-1">
-          <span className="text-yellow-500">★</span>
-          <span>{hotel.star_rating}</span>
+    <article className="group overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(15,23,42,0.14)]">
+      <Link to={`/hotels/${hotel.slug}`} className="block">
+        <div className="relative h-64 overflow-hidden">
+          <img
+            src={hotel.primary_image_url || fallbackImage}
+            alt={hotel.name}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            onError={(event) => {
+              event.currentTarget.src = fallbackImage;
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/65 via-slate-950/10 to-transparent" />
+          <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+            <Star size={14} className="fill-amber-400 text-amber-400" />
+            {hotel.star_rating.toFixed(1)} sao
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 text-white">
+            <h3 className="text-2xl font-semibold">{hotel.name}</h3>
+            <p className="mt-2 flex items-center gap-2 text-sm text-white/90">
+              <MapPin size={15} />
+              {[hotel.district, hotel.city].filter(Boolean).join(", ")}
+            </p>
+          </div>
         </div>
       </Link>
-      
-      <div className="p-4 sm:p-5 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2">
-          <Link to={`/hotels/${hotel.slug}`} className="block flex-grow pr-2">
-            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">
-              {hotel.name}
-            </h3>
-          </Link>
-          <div className="flex flex-col items-end flex-shrink-0">
-            <div className="bg-blue-600 text-white font-bold px-2 py-1 rounded text-sm mb-1">
-              {hotel.avg_rating.toFixed(1)}
-            </div>
-            <span className="text-xs text-gray-500">{hotel.review_count} reviews</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center text-gray-600 text-sm mb-4">
-          <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="truncate">{hotel.city}, {hotel.country}</span>
-        </div>
-        
-        <div className="mt-auto pt-4 border-t border-gray-100 flex items-end justify-between">
+
+      <div className="space-y-5 p-5">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Starting from</p>
-            <p className="text-xl font-bold text-gray-900">{formatCurrency(hotel.min_price)}</p>
+            <p className="text-sm text-slate-500">Điểm đánh giá khách lưu trú</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">
+              {hotel.avg_rating.toFixed(1)}
+            </p>
           </div>
-          <Link 
+          <div className="rounded-2xl bg-amber-50 px-4 py-3 text-right">
+            <p className="text-sm font-medium text-amber-800">
+              {hotel.review_count} review
+            </p>
+            <p className="text-xs text-amber-700">đã xác thực</p>
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between gap-4 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+              Giá từ
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">
+              {formatCurrency(hotel.min_price)}
+            </p>
+          </div>
+          <Link
             to={`/hotels/${hotel.slug}`}
-            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
           >
-            View Details
+            Xem chi tiết
           </Link>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 

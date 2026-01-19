@@ -1,345 +1,486 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Filter, RefreshCcw } from "lucide-react";
 import hotelService from "@/api/hotelService";
+import locationService from "@/api/locationService";
 import HotelCard from "@/components/HotelCard";
+import {
+  ClientEmptyState,
+  ClientMessage,
+  ClientPanel,
+  ClientSection,
+} from "@/components/client/ClientPrimitives";
 import type { HotelListItem } from "@/types/hotel";
 import type { PaginationMeta } from "@/types/common";
+import type { LocationOption } from "@/types/location";
+import { buildSearch, getApiErrorMessage, getDateAfter, getTomorrow } from "@/utils/client";
 
-const HotelListPage: React.FC = () => {
-  // Active filters applied to the API call
-  const [activeFilters, setActiveFilters] = useState({
-    q: "",
-    city: "",
-    price_min: "",
-    price_max: "",
-    star_rating_min: "",
-    star_rating_max: "",
-    check_in: "",
-    check_out: "",
-    guests: "",
-    sort: "created_at",
+const defaultValues = {
+  q: "",
+  city_id: "",
+  check_in: "",
+  check_out: "",
+  guests: "2",
+  price_min: "",
+  price_max: "",
+  star_rating_min: "",
+  star_rating_max: "",
+  sort: "created_at",
+};
+
+const HotelListPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState({
+    q: searchParams.get("q") || defaultValues.q,
+    city_id: searchParams.get("city_id") || defaultValues.city_id,
+    check_in: searchParams.get("check_in") || defaultValues.check_in,
+    check_out: searchParams.get("check_out") || defaultValues.check_out,
+    guests: searchParams.get("guests") || defaultValues.guests,
+    price_min: searchParams.get("price_min") || defaultValues.price_min,
+    price_max: searchParams.get("price_max") || defaultValues.price_max,
+    star_rating_min:
+      searchParams.get("star_rating_min") || defaultValues.star_rating_min,
+    star_rating_max:
+      searchParams.get("star_rating_max") || defaultValues.star_rating_max,
+    sort: searchParams.get("sort") || defaultValues.sort,
   });
 
-  // Local form state for the filter bar
-  const [formState, setFormState] = useState({ ...activeFilters });
-
+  const [cities, setCities] = useState<LocationOption[]>([]);
   const [hotels, setHotels] = useState<HotelListItem[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [meta, setMeta] = useState<PaginationMeta>();
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
 
-  const fetchHotels = useCallback(
-    async (filters: typeof activeFilters, page: number = 1, append: boolean = false) => {
-      if (page === 1) setIsLoading(true);
-      else setIsLoadingMore(true);
-      setError(null);
-
+  useEffect(() => {
+    const loadCities = async () => {
       try {
-        // Clean up empty filters
-        const params: Record<string, any> = { page, limit: 12 };
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== "" && value !== null && value !== undefined) {
-            params[key] = value;
-          }
+        const response = await locationService.getCities();
+        setCities(response.data);
+      } catch {
+        setCities([]);
+      }
+    };
+
+    void loadCities();
+  }, []);
+
+  useEffect(() => {
+    setFilters({
+      q: searchParams.get("q") || defaultValues.q,
+      city_id: searchParams.get("city_id") || defaultValues.city_id,
+      check_in: searchParams.get("check_in") || defaultValues.check_in,
+      check_out: searchParams.get("check_out") || defaultValues.check_out,
+      guests: searchParams.get("guests") || defaultValues.guests,
+      price_min: searchParams.get("price_min") || defaultValues.price_min,
+      price_max: searchParams.get("price_max") || defaultValues.price_max,
+      star_rating_min:
+        searchParams.get("star_rating_min") || defaultValues.star_rating_min,
+      star_rating_max:
+        searchParams.get("star_rating_max") || defaultValues.star_rating_max,
+      sort: searchParams.get("sort") || defaultValues.sort,
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchHotels = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const page = Number(searchParams.get("page") || "1");
+        const response = await hotelService.getHotels({
+          q: searchParams.get("q") || undefined,
+          city_id: searchParams.get("city_id") || undefined,
+          check_in: searchParams.get("check_in") || undefined,
+          check_out: searchParams.get("check_out") || undefined,
+          guests: searchParams.get("guests")
+            ? Number(searchParams.get("guests"))
+            : undefined,
+          price_min: searchParams.get("price_min")
+            ? Number(searchParams.get("price_min"))
+            : undefined,
+          price_max: searchParams.get("price_max")
+            ? Number(searchParams.get("price_max"))
+            : undefined,
+          star_rating_min: searchParams.get("star_rating_min")
+            ? Number(searchParams.get("star_rating_min"))
+            : undefined,
+          star_rating_max: searchParams.get("star_rating_max")
+            ? Number(searchParams.get("star_rating_max"))
+            : undefined,
+          sort: searchParams.get("sort") || undefined,
+          page,
+          limit: 9,
         });
 
-        const { data, meta: paginationMeta } = await hotelService.getHotels(params);
-
-        if (append) {
-          setHotels((prev) => [...prev, ...data]);
-        } else {
-          setHotels(data);
-        }
-        setMeta(paginationMeta);
-      } catch (err: any) {
-        setError(err.message || "Failed to load hotels. Please try again later.");
-        if (!append) setHotels([]);
+        setHotels(response.data);
+        setMeta(response.meta);
+      } catch (fetchError) {
+        setError(
+          getApiErrorMessage(
+            fetchError,
+            "Không tải được danh sách khách sạn.",
+          ),
+        );
+        setHotels([]);
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        setLoading(false);
       }
-    },
-    []
-  );
+    };
 
-  // Fetch on mount and when activeFilters change
-  useEffect(() => {
-    fetchHotels(activeFilters, 1, false);
-  }, [activeFilters, fetchHotels]);
+    void fetchHotels();
+  }, [searchParams]);
 
-  // Handle form input change
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
-    
-    // For selects (like sort or city), we can auto-apply the filter
-    if (e.target.tagName === "SELECT") {
-      setActiveFilters((prev) => ({ ...prev, [name]: value }));
-    }
+  const applyFilters = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSearchParams(buildSearch({ ...filters, page: 1 }));
   };
 
-  // Handle Search button click
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setActiveFilters({ ...formState });
+  const resetFilters = () => {
+    setFilters(defaultValues);
+    setSearchParams("");
   };
 
-  // Handle Load More
-  const handleLoadMore = () => {
-    if (meta && meta.has_next) {
-      const nextPage = (meta.page || 1) + 1;
-      fetchHotels(activeFilters, nextPage, true);
+  const handleLoadMore = async () => {
+    if (!meta?.has_next) return;
+
+    const nextPage = Number(meta.page || 1) + 1;
+
+    try {
+      setLoadingMore(true);
+      const response = await hotelService.getHotels({
+        q: filters.q || undefined,
+        city_id: filters.city_id || undefined,
+        check_in: filters.check_in || undefined,
+        check_out: filters.check_out || undefined,
+        guests: filters.guests ? Number(filters.guests) : undefined,
+        price_min: filters.price_min ? Number(filters.price_min) : undefined,
+        price_max: filters.price_max ? Number(filters.price_max) : undefined,
+        star_rating_min: filters.star_rating_min
+          ? Number(filters.star_rating_min)
+          : undefined,
+        star_rating_max: filters.star_rating_max
+          ? Number(filters.star_rating_max)
+          : undefined,
+        sort: filters.sort,
+        page: nextPage,
+        limit: 9,
+      });
+
+      setHotels((current) => [...current, ...response.data]);
+      setMeta(response.meta);
+    } catch (fetchError) {
+      setError(
+        getApiErrorMessage(fetchError, "Không tải thêm được dữ liệu."),
+      );
+    } finally {
+      setLoadingMore(false);
     }
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Find Your Perfect Stay</h1>
+    <div className="space-y-6">
+      <ClientSection
+        eyebrow="Hotel Search"
+        title="Tìm khách sạn phù hợp"
+        description="Bộ lọc này đang map thẳng sang backend public hiện tại, nên bạn có thể test luôn luồng thật thay vì dữ liệu giả."
+      >
+        <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+          <ClientPanel className="h-fit space-y-5 xl:sticky xl:top-28">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                  Bộ lọc
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  Tinh chỉnh tìm kiếm
+                </h2>
+              </div>
+              <Filter className="text-amber-700" size={20} />
+            </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar / Filters */}
-          <div className="w-full lg:w-1/4">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-24">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Search & Filters
-              </h2>
+            <form onSubmit={applyFilters} className="space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Từ khóa
+                </span>
+                <input
+                  value={filters.q}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      q: event.target.value,
+                    }))
+                  }
+                  placeholder="Tên khách sạn hoặc địa chỉ"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </label>
 
-              <form onSubmit={handleSearch} className="space-y-5">
-                {/* Search Term */}
-                <div>
-                  <label htmlFor="q" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Thành phố
+                </span>
+                <select
+                  value={filters.city_id}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      city_id: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                >
+                  <option value="">Tất cả thành phố</option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Check-in
+                  </span>
                   <input
-                    type="text"
-                    id="q"
-                    name="q"
-                    value={formState.q}
-                    onChange={handleInputChange}
-                    placeholder="Hotel name, city, address..."
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                    type="date"
+                    min={getTomorrow()}
+                    value={filters.check_in}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        check_in: event.target.value,
+                        check_out:
+                          current.check_out && current.check_out < event.target.value
+                            ? getDateAfter(2)
+                            : current.check_out,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
                   />
-                </div>
+                </label>
 
-                {/* City */}
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                  <select
-                    id="city"
-                    name="city"
-                    value={formState.city}
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                  >
-                    <option value="">All Cities</option>
-                    <option value="Hà Nội">Hà Nội</option>
-                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
-                    <option value="Đà Nẵng">Đà Nẵng</option>
-                    <option value="Nha Trang">Nha Trang</option>
-                    <option value="Phú Quốc">Phú Quốc</option>
-                    <option value="Đà Lạt">Đà Lạt</option>
-                  </select>
-                </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Check-out
+                  </span>
+                  <input
+                    type="date"
+                    min={filters.check_in || getDateAfter(2)}
+                    value={filters.check_out}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        check_out: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                  />
+                </label>
+              </div>
 
-                {/* Dates & Guests */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="check_in" className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-                    <input
-                      type="date"
-                      id="check_in"
-                      name="check_in"
-                      value={formState.check_in}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="check_out" className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-                    <input
-                      type="date"
-                      id="check_out"
-                      name="check_out"
-                      value={formState.check_out}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                  </div>
-                </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Số khách
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  value={filters.guests}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      guests: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </label>
 
-                <div>
-                  <label htmlFor="guests" className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Giá từ
+                  </span>
                   <input
                     type="number"
-                    id="guests"
-                    name="guests"
-                    min="1"
-                    value={formState.guests}
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                    min="0"
+                    value={filters.price_min}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        price_min: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
                   />
-                </div>
+                </label>
 
-                {/* Price Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price Range (VND)</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      name="price_min"
-                      placeholder="Min"
-                      min="0"
-                      value={formState.price_min}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                    <input
-                      type="number"
-                      name="price_max"
-                      placeholder="Max"
-                      min="0"
-                      value={formState.price_max}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                  </div>
-                </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Giá đến
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={filters.price_max}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        price_max: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                  />
+                </label>
+              </div>
 
-                {/* Star Rating */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Star Rating</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      name="star_rating_min"
-                      placeholder="Min (1)"
-                      min="1"
-                      max="5"
-                      value={formState.star_rating_min}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                    <input
-                      type="number"
-                      name="star_rating_max"
-                      placeholder="Max (5)"
-                      min="1"
-                      max="5"
-                      value={formState.star_rating_max}
-                      onChange={handleInputChange}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
-                    />
-                  </div>
-                </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Sao từ
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={filters.star_rating_min}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        star_rating_min: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                  />
+                </label>
 
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Sao đến
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={filters.star_rating_max}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        star_rating_max: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Sắp xếp
+                </span>
+                <select
+                  value={filters.sort}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      sort: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                >
+                  <option value="created_at">Mới cập nhật</option>
+                  <option value="avg_rating">Rating cao nhất</option>
+                  <option value="star_rating">Sao cao nhất</option>
+                  <option value="price_asc">Giá thấp đến cao</option>
+                  <option value="price_desc">Giá cao đến thấp</option>
+                </select>
+              </label>
+
+              <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="w-full mt-4 bg-blue-600 text-white font-medium py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex-1 rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
                 >
-                  Search Hotels
+                  Áp dụng
                 </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="w-full lg:w-3/4">
-            {/* Top Bar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center mb-6">
-              <p className="text-gray-600 text-sm mb-4 sm:mb-0">
-                {isLoading ? "Searching..." : `Found ${meta?.total || 0} hotels`}
-              </p>
-              
-              <div className="flex items-center space-x-2 w-full sm:w-auto">
-                <label htmlFor="sort" className="text-sm text-gray-600 whitespace-nowrap">Sort by:</label>
-                <select
-                  id="sort"
-                  name="sort"
-                  value={formState.sort}
-                  onChange={handleInputChange}
-                  className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-1.5 pl-3 pr-8 border"
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-white"
                 >
-                  <option value="created_at">Newest Added</option>
-                  <option value="star_rating">Star Rating (High to Low)</option>
-                  <option value="price_asc">Price (Low to High)</option>
-                  <option value="price_desc">Price (High to Low)</option>
-                  <option value="avg_rating">Guest Rating</option>
-                </select>
+                  <RefreshCcw size={15} />
+                  Reset
+                </button>
               </div>
-            </div>
+            </form>
+          </ClientPanel>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-                {error}
+          <div className="space-y-5">
+            <ClientPanel className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                  Kết quả
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-900">
+                  {loading ? "Đang tìm..." : `${meta?.total || 0} khách sạn phù hợp`}
+                </h2>
               </div>
-            )}
+              <Link
+                to="/"
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+              >
+                Quay lại trang chủ
+              </Link>
+            </ClientPanel>
 
-            {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div key={n} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 animate-pulse h-full">
-                    <div className="bg-gray-200 h-48 sm:h-56 w-full"></div>
-                    <div className="p-5">
-                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
-                      <div className="flex justify-between items-end mt-8 pt-4 border-t border-gray-100">
-                        <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                        <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-                      </div>
-                    </div>
-                  </div>
+            {error ? <ClientMessage tone="error" message={error} /> : null}
+
+            {loading ? (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-[360px] animate-pulse rounded-[28px] bg-white/75"
+                  />
                 ))}
               </div>
-            ) : hotels.length > 0 ? (
+            ) : hotels.length === 0 ? (
+              <ClientEmptyState
+                title="Chưa tìm thấy khách sạn phù hợp"
+                description="Thử nới bộ lọc hoặc bỏ bớt điều kiện ngày, giá và xếp hạng để xem thêm kết quả."
+                actionLabel="Xóa bộ lọc"
+                actionTo="/hotels"
+              />
+            ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
                   {hotels.map((hotel) => (
                     <HotelCard key={hotel.id} hotel={hotel} />
                   ))}
                 </div>
 
-                {meta && meta.has_next && (
-                  <div className="mt-10 text-center">
+                {meta?.has_next ? (
+                  <div className="text-center">
                     <button
+                      type="button"
                       onClick={handleLoadMore}
-                      disabled={isLoadingMore}
-                      className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      disabled={loadingMore}
+                      className="rounded-full bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isLoadingMore ? "Loading..." : "Load More"}
+                      {loadingMore ? "Đang tải..." : "Tải thêm khách sạn"}
                     </button>
                   </div>
-                )}
+                ) : null}
               </>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No hotels found</h3>
-                <p className="text-gray-500">Try adjusting your filters or search terms to find what you're looking for.</p>
-                <button 
-                  onClick={() => {
-                    const resetState = {
-                      q: "", city: "", price_min: "", price_max: "",
-                      star_rating_min: "", star_rating_max: "",
-                      check_in: "", check_out: "", guests: "", sort: "created_at"
-                    };
-                    setFormState(resetState);
-                    setActiveFilters(resetState);
-                  }}
-                  className="mt-6 text-blue-600 font-medium hover:text-blue-500"
-                >
-                  Clear all filters
-                </button>
-              </div>
             )}
           </div>
         </div>
-      </div>
+      </ClientSection>
     </div>
   );
 };

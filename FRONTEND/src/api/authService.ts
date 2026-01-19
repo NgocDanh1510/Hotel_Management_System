@@ -44,13 +44,13 @@ const authService = {
   },
 
   getMe: async () => {
-    const response = await axiosInstance.get<ApiResponse<AuthUser>>("/me");
+    const response = await axiosInstance.get<ApiResponse<AuthUser>>("/account");
     return response.data;
   },
 
   updateMe: async (data: UpdateProfileRequest) => {
     const response = await axiosInstance.put<ApiResponse<UserProfile>>(
-      "/me",
+      "/user/profile",
       data,
     );
     return response.data;

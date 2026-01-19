@@ -13,6 +13,8 @@ export interface Payment {
   transaction_id?: string;
   paid_at?: string;
   note?: string;
+  booking_id?: string;
+  created_at?: string;
 }
 
 export interface CreatePaymentRequest {
@@ -25,4 +27,12 @@ export interface PaymentResponse {
   payment_id: string;
   payment_url: string;
   expires_in: number;
+}
+
+export interface UserPayment extends Payment {
+  Booking?: {
+    id: string;
+    status: string;
+    total_price: number;
+  };
 }

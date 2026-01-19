@@ -2,13 +2,13 @@ export interface HotelListItem {
   id: string;
   name: string;
   slug: string;
-  city: string;
-  country: string;
+  district?: string | null;
+  city?: string | null;
   star_rating: number;
   avg_rating: number;
   review_count: number;
   min_price: number;
-  primary_image_url: string;
+  primary_image_url: string | null;
 }
 
 export interface Hotel {
@@ -17,8 +17,8 @@ export interface Hotel {
   slug: string;
   description: string;
   address: string;
-  city: string;
-  country: string;
+  district?: string | null;
+  city?: string | null;
   star_rating: number;
   contact_email: string;
   contact_phone: string;
@@ -41,11 +41,13 @@ export interface Image {
 export interface RoomType {
   id: string;
   name: string;
+  description?: string | null;
   max_occupancy: number;
   base_price: number;
   currency: string;
+  total_rooms?: number;
   bed_type?: string;
-  size_sqm?: number;
+  size_sqm?: number | null;
   images: Image[];
   amenities: Amenity[];
 }

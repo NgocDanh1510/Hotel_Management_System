@@ -44,7 +44,10 @@ axiosInstance.interceptors.response.use(
         );
 
         // Save new access token
-        const { access_token } = refreshResponse.data;
+        const access_token = refreshResponse.data?.data?.access_token;
+        if (!access_token) {
+          throw new Error("Refresh token response is missing access_token");
+        }
         localStorage.setItem("access_token", access_token);
 
         // Update original request with new token

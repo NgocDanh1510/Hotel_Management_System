@@ -9,8 +9,8 @@ import type { ApiResponse, PaginatedResponse } from "@/types/common";
 
 interface GetHotelsParams {
   q?: string;
-  city?: string;
-  country?: string;
+  district_id?: string;
+  city_id?: string;
   star_rating_min?: number;
   star_rating_max?: number;
   price_min?: number;
@@ -65,7 +65,7 @@ const hotelService = {
   },
 
   getHotelReviews: async (hotelId: string, params: GetHotelReviewsParams) => {
-    const response = await publicAxios.get<ApiResponse<Review[]>>(
+    const response = await publicAxios.get<PaginatedResponse<Review[]>>(
       `/hotels/${hotelId}/reviews`,
       { params },
     );

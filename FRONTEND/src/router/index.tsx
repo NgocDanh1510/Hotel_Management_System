@@ -8,6 +8,8 @@ import ForbiddenPage from "@/pages/ForbiddenPage";
 import ProfilePage from "@/pages/ProfilePage";
 import MyBookingsPage from "@/pages/MyBookingsPage";
 import BookingDetailPage from "@/pages/BookingDetailPage";
+import MyPaymentsPage from "@/pages/MyPaymentsPage";
+import MyReviewsPage from "@/pages/MyReviewsPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminHotelsPage from "@/pages/admin/AdminHotelsPage";
@@ -21,47 +23,60 @@ import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
 import AdminImagesPage from "@/pages/admin/AdminImagesPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
+import LayoutClient from "@/components/layouts/LayoutClient";
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <HomePage />,
-  },
-  {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/register",
-    element: <RegisterPage />,
-  },
-  {
-    path: "/hotels",
-    element: <HotelListPage />,
-  },
-  {
-    path: "/hotels/:slug",
-    element: <HotelDetailPage />,
-  },
-  {
-    path: "/forbidden",
-    element: <ForbiddenPage />,
-  },
-  // Protected Routes
-  {
-    element: <ProtectedRoute />,
+    element: <LayoutClient />,
     children: [
       {
-        path: "/me",
-        element: <ProfilePage />,
+        index: true,
+        element: <HomePage />,
       },
       {
-        path: "/me/bookings",
-        element: <MyBookingsPage />,
+        path: "/login",
+        element: <LoginPage />,
       },
       {
-        path: "/bookings/:id",
-        element: <BookingDetailPage />,
+        path: "/register",
+        element: <RegisterPage />,
+      },
+      {
+        path: "/hotels",
+        element: <HotelListPage />,
+      },
+      {
+        path: "/hotels/:slug",
+        element: <HotelDetailPage />,
+      },
+      {
+        path: "/forbidden",
+        element: <ForbiddenPage />,
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: "/me",
+            element: <ProfilePage />,
+          },
+          {
+            path: "/me/bookings",
+            element: <MyBookingsPage />,
+          },
+          {
+            path: "/me/payments",
+            element: <MyPaymentsPage />,
+          },
+          {
+            path: "/me/reviews",
+            element: <MyReviewsPage />,
+          },
+          {
+            path: "/bookings/:id",
+            element: <BookingDetailPage />,
+          },
+        ],
       },
     ],
   },

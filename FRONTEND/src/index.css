@@ -1,1 +1,47 @@
 @import "tailwindcss";
+
+:root {
+  color: #172033;
+  background: #f7f4ec;
+  font-family: "Segoe UI Variable", "Trebuchet MS", "Avenir Next", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top, rgba(245, 158, 11, 0.14), transparent 28%),
+    linear-gradient(180deg, #fffaf2 0%, #f6f7fb 100%);
+  color: #172033;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.22);
+}
