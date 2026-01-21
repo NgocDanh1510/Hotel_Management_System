@@ -276,6 +276,69 @@ class PaymentService {
   }
 
   /**
+   * Complete a pending payment for demo/testing flows.
+   * @param {string} paymentId
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async mockCompletePayment(paymentId, userId) {
+    const payment = await Payment.findByPk(paymentId, {
+      include: [{ model: Booking }],
+    });
+
+    if (!payment) {
+      const error = new Error("Payment not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (payment.user_id !== userId && payment.Booking?.user_id !== userId) {
+      const error = new Error("You do not have permission to complete this payment");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (payment.status !== "pending") {
+      const error = new Error("Only pending payments can be completed");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      const transactionId = `MOCK_${Date.now()}`;
+
+      await payment.update(
+        {
+          status: "success",
+          transaction_id: transactionId,
+          paid_at: new Date(),
+          note: "Completed from customer frontend demo flow",
+        },
+        { transaction },
+      );
+
+      if (payment.Booking && payment.Booking.status === "pending") {
+        await payment.Booking.update({ status: "confirmed" }, { transaction });
+      }
+
+      await transaction.commit();
+
+      return {
+        id: payment.id,
+        booking_id: payment.booking_id,
+        status: "success",
+        transaction_id: transactionId,
+        paid_at: payment.paid_at,
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /**
    * List payments for the authenticated user
    * @param {string} userId
    * @returns {Promise<Object>}

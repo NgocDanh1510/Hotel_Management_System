@@ -35,14 +35,14 @@ class HotelService {
       limit = 12,
     } = query;
 
-    const where = { is_active: true, status: "active" };
+    const where = { is_active: true, status: "approved" };
     const include = [];
 
     // Search by name, address
     if (q) {
       where[Op.or] = [
-        { name: { [Op.iLike]: `%${q}%` } },
-        { address: { [Op.iLike]: `%${q}%` } },
+        { name: { [Op.like]: `%${q}%` } },
+        { address: { [Op.like]: `%${q}%` } },
       ];
     }
 
@@ -81,7 +81,7 @@ class HotelService {
           required: false,
           duplicating: false,
           where: {
-            status: "active",
+            status: { [Op.ne]: "maintenance" },
           },
           include: [
             {
@@ -93,12 +93,12 @@ class HotelService {
                 [Op.not]: {
                   [Op.or]: [
                     {
-                      checkOut: {
+                      check_out: {
                         [Op.lte]: check_in, // 11:00 <= new 14:00
                       },
                     },
                     {
-                      checkIn: {
+                      check_in: {
                         [Op.gte]: check_out, // 14:00 >= new 11:00
                       },
                     },
@@ -136,13 +136,11 @@ class HotelService {
     if (sort === "star_rating") {
       order = [["star_rating", "DESC"]];
     } else if (sort === "price_asc") {
-      order = [
-        [sequelize.fn("MIN", sequelize.col("`RoomTypes`.`base_price`")), "ASC"],
-      ];
+      order = [[sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")), "ASC"]];
     } else if (sort === "price_desc") {
       order = [
         [
-          sequelize.fn("MIN", sequelize.col("`RoomTypes`.`base_price`")),
+          sequelize.fn("MIN", sequelize.col("RoomTypes.base_price")),
           "DESC",
         ],
       ];
@@ -176,9 +174,9 @@ class HotelService {
     // Filter by price range if provided
     if (price_min || price_max) {
       hotels = hotels.filter((hotel) => {
-        const minPrice = Math.min(
-          ...hotel.RoomTypes.map((rt) => parseFloat(rt.base_price)),
-        );
+        const prices = hotel.RoomTypes.map((rt) => parseFloat(rt.base_price))
+          .filter((price) => !Number.isNaN(price));
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
         if (price_min && minPrice < parseFloat(price_min)) return false;
         if (price_max && minPrice > parseFloat(price_max)) return false;
         return true;
@@ -197,9 +195,9 @@ class HotelService {
           attributes: ["url"],
         });
 
-        const minPrice = Math.min(
-          ...hotel.RoomTypes.map((rt) => parseFloat(rt.base_price)),
-        );
+        const prices = hotel.RoomTypes.map((rt) => parseFloat(rt.base_price))
+          .filter((price) => !Number.isNaN(price));
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
         return {
           id: hotel.id,
@@ -243,7 +241,7 @@ class HotelService {
    */
   async getHotelDetail(slug) {
     const hotel = await Hotel.findOne({
-      where: { slug, is_active: true, status: "active" },
+      where: { slug, is_active: true, status: "approved" },
       include: [
         {
           model: District,
@@ -252,7 +250,17 @@ class HotelService {
         },
         {
           model: RoomType,
-          attributes: ["id", "name", "max_occupancy", "base_price"],
+          attributes: [
+            "id",
+            "name",
+            "description",
+            "max_occupancy",
+            "base_price",
+            "currency",
+            "bed_type",
+            "size_sqm",
+            "total_rooms",
+          ],
           include: [
             {
               model: Amenity,
@@ -341,8 +349,13 @@ class HotelService {
       room_types: hotel.RoomTypes.map((rt) => ({
         id: rt.id,
         name: rt.name,
+        description: rt.description,
         max_occupancy: rt.max_occupancy,
         base_price: parseFloat(rt.base_price),
+        currency: rt.currency,
+        bed_type: rt.bed_type,
+        size_sqm: rt.size_sqm ? parseFloat(rt.size_sqm) : null,
+        total_rooms: rt.total_rooms,
         images: rt.Images || [],
         amenities: rt.Amenities || [],
       })),

@@ -11,7 +11,9 @@ const {
   validateSchema,
   validateQuery,
 } = require("../middlewares/validate.middleware");
-const updateProfileSchema = require("../validations/schemaJoi/updateProfile.validation");
+const {
+  updateProfileSchema,
+} = require("../validations/schemaJoi/profile.validation");
 const {
   listMyBookingsQuerySchema,
 } = require("../validations/schemaJoi/booking.validation");

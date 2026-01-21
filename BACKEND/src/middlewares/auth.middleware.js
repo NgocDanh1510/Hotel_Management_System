@@ -32,8 +32,11 @@ const authenticateToken = (req, res, next) => {
       });
     }
 
-    // Attach decoded user info to req
-    req.user = decoded;
+    // Attach decoded user info to req and keep `id` for legacy handlers.
+    req.user = {
+      ...decoded,
+      id: decoded.user_id,
+    };
     next();
   });
 };

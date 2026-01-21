@@ -29,4 +29,15 @@ router.get(
   paymentController.getPaymentDetail
 );
 
+/**
+ * @route POST /api/v1/payments/:id/mock-complete
+ * @desc Complete a pending payment for demo/testing flows
+ * @access Private
+ */
+router.post(
+  "/:id/mock-complete",
+  authenticateToken,
+  paymentController.mockCompletePayment
+);
+
 module.exports = router;

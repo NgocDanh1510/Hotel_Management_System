@@ -34,7 +34,7 @@ const createPayment = async (req, res, next) => {
 const getPaymentDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.user_id;
 
     const payment = await paymentService.getPaymentDetail(id, userId);
 
@@ -54,7 +54,35 @@ const getPaymentDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/payments/:id/mock-complete
+ * Complete a pending payment in demo mode.
+ */
+const mockCompletePayment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id;
+
+    const result = await paymentService.mockCompletePayment(id, userId);
+
+    return sendSuccess(res, {
+      message: "Payment completed successfully",
+      data: result,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Mock complete payment error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   createPayment,
   getPaymentDetail,
+  mockCompletePayment,
 };
