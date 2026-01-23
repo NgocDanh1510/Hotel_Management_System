@@ -10,26 +10,27 @@ const {
   updateEmailSchema,
 } = require("../validations/schemaJoi/profile.validation");
 
-const { authenticateToken } = require("../middlewares/auth.middleware");
+const { authenticateToken, requirePermission } = require("../middlewares/auth.middleware");
 const {
   validate,
   validateSchema,
+  validateQuery,
 } = require("../middlewares/validate.middleware");
 
 router.use(authenticateToken);
 
 /**
- * GET /api/v1/user/
+ * GET /api/v1/user/profile
  * Get authenticated user's profile
  */
-router.get("/user", userController.getProfile);
+router.get("/profile", userController.getProfile);
 
 /**
- * PUT /api/v1/user/
+ * PUT /api/v1/user/profile
  * Update authenticated user's profile
  */
 router.put(
-  "/user",
+  "/profile",
   validateSchema(updateProfileSchema),
   userController.updateProfile,
 );
@@ -39,7 +40,7 @@ router.put(
  * Update authenticated user's password
  */
 router.put(
-  "/user/password",
+  "/password",
   validateSchema(updatePasswordSchema),
   userController.updatePassword,
 );
@@ -49,7 +50,7 @@ router.put(
  * Update authenticated user's email
  */
 router.put(
-  "/user/email",
+  "/email",
   validateSchema(updateEmailSchema),
   userController.updateEmail,
 );
@@ -60,9 +61,55 @@ router.put(
  * Permission: booking.read_own
  */
 router.get(
-  "/user/bookings",
-  authenticateToken,
+  "/bookings",
   requirePermission("booking.read_own"),
   validateQuery(listMyBookingsQuerySchema),
   userController.listMyBookings,
 );
+
+/**
+ * GET /api/v1/user/payments
+ * List payments for the authenticated user
+ */
+router.get(
+  "/payments",
+  userController.listMyPayments,
+);
+
+/**
+ * GET /api/v1/user/reviews
+ * List reviews written by the authenticated user
+ */
+router.get(
+  "/reviews",
+  userController.listMyReviews,
+);
+
+/**
+ * GET /api/v1/user/reviews/:id
+ * Get detail of a specific review
+ */
+router.get(
+  "/reviews/:id",
+  userController.getMyReviewDetail,
+);
+
+/**
+ * PUT /api/v1/user/reviews/:id
+ * Update a specific review
+ */
+router.put(
+  "/reviews/:id",
+  userController.updateMyReview,
+);
+
+/**
+ * DELETE /api/v1/user/reviews/:id
+ * Delete a specific review
+ */
+router.delete(
+  "/reviews/:id",
+  userController.deleteMyReview,
+);
+
+module.exports = router;

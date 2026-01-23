@@ -27,6 +27,34 @@ const createPayment = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/payments/:id
+ * Get payment detail.
+ */
+const getPaymentDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const payment = await paymentService.getPaymentDetail(id, userId);
+
+    return sendSuccess(res, {
+      message: "Payment detail retrieved successfully",
+      data: payment,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Get payment detail error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   createPayment,
+  getPaymentDetail,
 };

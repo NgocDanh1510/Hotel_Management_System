@@ -246,6 +246,51 @@ class PaymentService {
       throw error;
     }
   }
+
+  /**
+   * Get payment details by ID
+   * @param {string} paymentId
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async getPaymentDetail(paymentId, userId) {
+    const payment = await Payment.findByPk(paymentId, {
+      include: [{ model: Booking, attributes: ["id", "user_id"] }]
+    });
+
+    if (!payment) {
+      const error = new Error("Payment not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Admins can see all, but here we just check if it's the user's payment.
+    // In a real app, you might inject permissions to allow admins.
+    if (payment.user_id !== userId && payment.Booking?.user_id !== userId) {
+      const error = new Error("You do not have permission to view this payment");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return payment;
+  }
+
+  /**
+   * List payments for the authenticated user
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async listMyPayments(userId) {
+    const payments = await Payment.findAll({
+      where: { user_id: userId },
+      order: [["created_at", "DESC"]],
+      include: [
+        { model: Booking, attributes: ["id", "status", "total_price"] }
+      ]
+    });
+
+    return { payments };
+  }
 }
 
 module.exports = new PaymentService();

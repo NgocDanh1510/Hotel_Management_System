@@ -48,4 +48,16 @@ router.post(
   bookingController.cancelBooking
 );
 
+/**
+ * GET /api/v1/bookings/:id/invoice
+ * Get invoice for a booking
+ * Permission: booking.read_own OR booking.read_all
+ */
+router.get(
+  "/:id/invoice",
+  authenticateToken,
+  requireAnyPermission(["booking.read_own", "booking.read_all"]),
+  bookingController.getBookingInvoice
+);
+
 module.exports = router;

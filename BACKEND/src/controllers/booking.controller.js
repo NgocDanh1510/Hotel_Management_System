@@ -79,8 +79,36 @@ const cancelBooking = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/bookings/:id/invoice
+ * Get invoice for a booking.
+ */
+const getBookingInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id || req.user.id;
+    
+    const invoice = await bookingService.getBookingInvoice(id, userId);
+    
+    return sendSuccess(res, {
+      message: "Booking invoice retrieved successfully",
+      data: invoice,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Get booking invoice error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   createBooking,
   getBookingDetail,
   cancelBooking,
+  getBookingInvoice,
 };

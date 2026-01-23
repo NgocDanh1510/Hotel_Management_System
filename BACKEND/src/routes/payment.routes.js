@@ -18,4 +18,15 @@ router.post(
   paymentController.createPayment
 );
 
+/**
+ * @route GET /api/v1/payments/:id
+ * @desc Get payment detail
+ * @access Private
+ */
+router.get(
+  "/:id",
+  authenticateToken,
+  paymentController.getPaymentDetail
+);
+
 module.exports = router;

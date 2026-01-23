@@ -738,6 +738,66 @@ class BookingService {
       updated_at: booking.updated_at,
     };
   }
+
+  // ────────────────────────────────────────
+  //  GET BOOKING INVOICE
+  // ────────────────────────────────────────
+
+  /**
+   * Get invoice for a booking.
+   *
+   * @param {string} bookingId - Booking ID
+   * @param {string} userId - Authenticated user's ID
+   * @returns {Promise<Object>} Invoice data
+   */
+  async getBookingInvoice(bookingId, userId) {
+    const booking = await Booking.findByPk(bookingId, {
+      include: [
+        { model: Hotel, attributes: ["id", "name", "address", "city", "country"] },
+        { model: Room, attributes: ["id", "room_number"] },
+        { model: RoomType, attributes: ["id", "name", "base_price"] },
+        { model: User, attributes: ["id", "name", "email", "phone"] },
+        { model: Payment, attributes: ["id", "amount", "gateway", "status", "type", "paid_at"] },
+      ],
+    });
+
+    if (!booking) {
+      const error = new Error("Booking not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (booking.user_id !== userId) {
+      const error = new Error("You do not have permission to view this invoice");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const plain = booking.get({ plain: true });
+
+    return {
+      invoice_id: `INV-${plain.id.substring(0, 8).toUpperCase()}`,
+      booking_id: plain.id,
+      issued_at: new Date(),
+      customer: plain.User,
+      hotel: plain.Hotel,
+      room_details: {
+        room_number: plain.Room?.room_number,
+        room_type: plain.RoomType?.name,
+      },
+      stay_details: {
+        check_in: plain.check_in,
+        check_out: plain.check_out,
+        guests: plain.guests_count,
+      },
+      billing: {
+        total_price: parseFloat(plain.total_price),
+        price_per_night: parseFloat(plain.price_per_night),
+      },
+      payments: plain.Payments || [],
+      status: plain.status,
+    };
+  }
 }
 
 module.exports = new BookingService();

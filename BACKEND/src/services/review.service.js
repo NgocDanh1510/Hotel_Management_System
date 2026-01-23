@@ -346,6 +346,90 @@ class ReviewService {
       { where: { id: hotelId } }
     );
   }
+
+  /**
+   * List reviews written by the authenticated user
+   */
+  async listMyReviews(userId) {
+    const reviews = await Review.findAll({
+      where: { user_id: userId },
+      include: [
+        { model: Hotel, attributes: ["id", "name"] },
+        { model: Booking, attributes: ["id", "check_in", "check_out"] }
+      ],
+      order: [["created_at", "DESC"]],
+    });
+    return { reviews };
+  }
+
+  /**
+   * Get specific review detail
+   */
+  async getMyReviewDetail(reviewId, userId) {
+    const review = await Review.findOne({
+      where: { id: reviewId, user_id: userId },
+      include: [
+        { model: Hotel, attributes: ["id", "name"] },
+        { model: Booking, attributes: ["id", "check_in", "check_out"] }
+      ]
+    });
+
+    if (!review) {
+      const error = new Error("Review not found or you don't have permission");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return review;
+  }
+
+  /**
+   * Update my review
+   */
+  async updateMyReview(reviewId, userId, data) {
+    const review = await Review.findOne({ where: { id: reviewId, user_id: userId } });
+
+    if (!review) {
+      const error = new Error("Review not found or you don't have permission");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const { rating_overall, rating_cleanliness, rating_service, rating_location, comment } = data;
+
+    await review.update({
+      rating_overall: rating_overall || review.rating_overall,
+      rating_cleanliness: rating_cleanliness !== undefined ? rating_cleanliness : review.rating_cleanliness,
+      rating_service: rating_service !== undefined ? rating_service : review.rating_service,
+      rating_location: rating_location !== undefined ? rating_location : review.rating_location,
+      comment: comment !== undefined ? comment : review.comment,
+      is_published: false, // Re-require approval
+    });
+
+    await this._recalculateHotelRating(review.hotel_id);
+
+    return review;
+  }
+
+  /**
+   * Delete my review
+   */
+  async deleteMyReview(reviewId, userId) {
+    const review = await Review.findOne({ where: { id: reviewId, user_id: userId } });
+
+    if (!review) {
+      const error = new Error("Review not found or you don't have permission");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const hotelId = review.hotel_id;
+    await review.destroy();
+    
+    await this._recalculateHotelRating(hotelId);
+    
+    return true;
+  }
 }
 
 module.exports = new ReviewService();
