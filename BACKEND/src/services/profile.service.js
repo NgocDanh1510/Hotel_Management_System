@@ -206,9 +206,26 @@ const updatePassword = async (userId, updateData) => {
   };
 };
 
+const updateEmail = async (userId, newEmail) => {
+  const user = await User.findByPk(userId);
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await user.update({ email: newEmail });
+
+  return {
+    message: "Email updated successfully",
+  };
+};
+
 module.exports = {
   getProfile,
   getProfileDetail,
   updateProfile,
+  updateEmail,
   updatePassword,
 };

@@ -8,6 +8,13 @@ const updateProfileSchema = Joi.object({
     .messages({
       "string.pattern.base": "Phone number is invalid",
     }),
+})
+
+  .messages({
+    "object.unknown": "Unknown field in request body",
+  });
+
+const updatePasswordSchema = Joi.object({
   current_password: Joi.string().optional(),
   new_password: Joi.string()
     .min(8)
@@ -31,5 +38,14 @@ const updateProfileSchema = Joi.object({
   .messages({
     "object.unknown": "Unknown field in request body",
   });
+const updateEmailSchema = Joi.object({
+  new_email: Joi.string().email().required(),
+}).messages({
+  "object.unknown": "Unknown field in request body",
+});
 
-module.exports = updateProfileSchema;
+module.exports = {
+  updateProfileSchema,
+  updatePasswordSchema,
+  updateEmailSchema,
+};

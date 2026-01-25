@@ -7,7 +7,10 @@ const {
   authenticateToken,
   requirePermission,
 } = require("../middlewares/auth.middleware");
-const { validateSchema, validateQuery } = require("../middlewares/validate.middleware");
+const {
+  validateSchema,
+  validateQuery,
+} = require("../middlewares/validate.middleware");
 const updateProfileSchema = require("../validations/schemaJoi/updateProfile.validation");
 const {
   listMyBookingsQuerySchema,
@@ -21,6 +24,7 @@ const reviewRoutes = require("./review.routes");
 const paymentRoutes = require("./payment.routes");
 const webhookRoutes = require("./webhook.routes");
 const locationRoutes = require("./location.route");
+const userRoutes = require("./user.routes");
 
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
@@ -30,27 +34,18 @@ router.use("/reviews", reviewRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/webhooks", webhookRoutes);
 router.use("/locations", locationRoutes);
+router.use("/user", userRoutes);
 
-// Profile endpoints
-router.get("/me", authenticateToken, authController.getProfile);
+/**
+ * GET /api/v1/account
+ * Get authenticated user's profile
+ */
+router.get("/account", authenticateToken, authController.getProfile);
 router.put(
-  "/me",
+  "/account",
   authenticateToken,
   validateSchema(updateProfileSchema),
   authController.updateProfile,
-);
-
-/**
- * GET /api/v1/me/bookings
- * List bookings for the authenticated user
- * Permission: booking.read_own
- */
-router.get(
-  "/me/bookings",
-  authenticateToken,
-  requirePermission("booking.read_own"),
-  validateQuery(listMyBookingsQuerySchema),
-  bookingController.listMyBookings,
 );
 
 module.exports = router;

@@ -53,7 +53,7 @@ module.exports = (sequelize) => {
         defaultValue: true,
       },
       status: {
-        type: DataTypes.ENUM("pending", "active", "rejected"),
+        type: DataTypes.ENUM("pending", "approved", "rejected"),
         defaultValue: "pending",
       },
       avg_rating: {

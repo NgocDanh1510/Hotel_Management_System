@@ -79,32 +79,8 @@ const cancelBooking = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/v1/me/bookings
- * List all bookings for the authenticated user.
- */
-const listMyBookings = async (req, res, next) => {
-  try {
-    const userId = req.user.user_id;
-    const { bookings, meta } = await bookingService.listMyBookings(
-      userId,
-      req.query,
-    );
-
-    return sendSuccess(res, {
-      message: "Bookings retrieved successfully",
-      data: bookings,
-      meta,
-    });
-  } catch (error) {
-    console.error("List my bookings error:", error);
-    next(error);
-  }
-};
-
 module.exports = {
   createBooking,
   getBookingDetail,
   cancelBooking,
-  listMyBookings,
 };
