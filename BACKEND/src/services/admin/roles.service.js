@@ -29,8 +29,8 @@ const listRoles = async (query) => {
 
   if (q) {
     where[Op.or] = [
-      { name: { [Op.iLike]: `%${q}%` } },
-      { description: { [Op.iLike]: `%${q}%` } },
+      { name: { [Op.like]: `%${q}%` } },
+      { description: { [Op.like]: `%${q}%` } },
     ];
   }
 

@@ -206,8 +206,8 @@ class AdminHotelService {
     // Search by name, slug
     if (q) {
       where[Op.or] = [
-        { name: { [Op.iLike]: `%${q}%` } },
-        { slug: { [Op.iLike]: `%${q}%` } },
+        { name: { [Op.like]: `%${q}%` } },
+        { slug: { [Op.like]: `%${q}%` } },
       ];
     }
 
@@ -221,7 +221,16 @@ class AdminHotelService {
         order = [["star_rating", "desc"]];
         break;
       case "total_bookings":
-        order = [[fn("COUNT", col("Bookings.id")), "desc"]];
+        order = [
+          [
+            literal(`(
+        SELECT COUNT(*)
+        FROM bookings AS b
+        WHERE b.hotel_id = Hotel.id
+      )`),
+            "desc",
+          ],
+        ];
         break;
       case "created_at":
       default:
@@ -275,6 +284,7 @@ class AdminHotelService {
         "created_at",
         "updated_at",
       ],
+
       subQuery: false,
     });
 
