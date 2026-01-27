@@ -4,9 +4,14 @@ import type {
   AdminAmenityOption,
   AdminBookingListItem,
   AdminHotelListItem,
+  AdminImageItem,
   AdminPaymentListItem,
+  AdminPermissionListItem,
+  AdminRoleDetail,
+  AdminRoleListItem,
   AdminReviewListItem,
   AdminRoleOption,
+  AdminRoomListItem,
   AdminRoomTypeListItem,
 } from "@/features/admin/types";
 import axiosInstance from "./axiosInstance";
@@ -28,6 +33,14 @@ type OffsetFilters = {
   offset?: number;
   limit?: number;
   sort?: string;
+};
+
+type PageFilters = {
+  q?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: "ASC" | "DESC";
 };
 
 type HotelFilters = OffsetFilters & {
@@ -61,6 +74,13 @@ type PaymentFilters = OffsetFilters & {
   type?: string;
   gateway?: string;
   booking_id?: string;
+};
+
+type RoomFilters = OffsetFilters & {
+  hotel_id?: string;
+  room_type_id?: string;
+  status?: "available" | "occupied" | "maintenance";
+  floor?: number;
 };
 
 type CreateUserPayload = {
@@ -276,6 +296,43 @@ export const adminService = {
     return response.data;
   },
 
+  getRooms: async (params?: RoomFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<AdminRoomListItem[]>
+    >("/admin/rooms", { params });
+    return response.data;
+  },
+
+  updateRoom: async (
+    id: string | number,
+    data: {
+      status?: "available" | "occupied" | "maintenance";
+      floor?: number;
+      room_number?: string;
+      room_type_id?: string;
+    },
+  ) => {
+    const response = await axiosInstance.put<ApiResponse<AdminRoomListItem>>(
+      `/admin/rooms/${id}`,
+      data,
+    );
+    return response.data;
+  },
+
+  bulkUpdateRoomStatus: async (
+    room_ids: string[] | number[],
+    status: "maintenance" | "available",
+  ) => {
+    const response = await axiosInstance.patch<ApiResponse<unknown>>(
+      "/admin/rooms/bulk-status",
+      {
+        room_ids,
+        status,
+      },
+    );
+    return response.data;
+  },
+
   getAmenities: async () => {
     const response = await axiosInstance.get<ApiResponse<AdminAmenityOption[]>>(
       "/admin/amenities",
@@ -340,10 +397,16 @@ export const adminService = {
     formData.append("entity_type", entity_type);
     formData.append("entity_id", entity_id.toString());
     files.forEach((file) => {
-      formData.append("images", file);
+      formData.append("files[]", file);
     });
 
-    const response = await axiosInstance.post<ApiResponse<unknown>>(
+    const response = await axiosInstance.post<
+      ApiResponse<{
+        success_count: number;
+        images: AdminImageItem[];
+        failed: { originalName: string; reason: string }[];
+      }>
+    >(
       "/admin/images/upload",
       formData,
       {
@@ -366,7 +429,7 @@ export const adminService = {
   },
 
   setPrimaryImage: async (id: string | number) => {
-    const response = await axiosInstance.patch<ApiResponse<unknown>>(
+    const response = await axiosInstance.patch<ApiResponse<AdminImageItem>>(
       `/admin/images/${id}/set-primary`,
     );
     return response.data;
@@ -379,9 +442,16 @@ export const adminService = {
     return response.data;
   },
 
-  getRoles: async () => {
-    const response = await axiosInstance.get<PaginatedResponse<AdminRoleOption[]>>(
-      "/admin/roles",
+  getRoles: async (params?: PageFilters & { is_system?: boolean }) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<AdminRoleListItem[]>
+    >("/admin/roles", { params });
+    return response.data;
+  },
+
+  getRoleById: async (id: string | number) => {
+    const response = await axiosInstance.get<ApiResponse<AdminRoleDetail>>(
+      `/admin/roles/${id}`,
     );
     return response.data;
   },
@@ -420,10 +490,30 @@ export const adminService = {
     return response.data;
   },
 
-  getPermissions: async (params?: OffsetFilters) => {
-    const response = await axiosInstance.get<ApiResponse<unknown>>(
+  getPermissions: async (params?: PageFilters & { module?: string }) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<AdminPermissionListItem[]>
+    >(
       "/admin/permissions",
       { params },
+    );
+    return response.data;
+  },
+
+  getPermissionById: async (id: string | number) => {
+    const response = await axiosInstance.get<ApiResponse<AdminPermissionListItem>>(
+      `/admin/permissions/${id}`,
+    );
+    return response.data;
+  },
+
+  updatePermission: async (
+    id: string | number,
+    data: { description?: string | null; module?: string },
+  ) => {
+    const response = await axiosInstance.put<ApiResponse<AdminPermissionListItem>>(
+      `/admin/permissions/${id}`,
+      data,
     );
     return response.data;
   },

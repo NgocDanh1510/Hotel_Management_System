@@ -3,6 +3,24 @@ export interface AdminRoleOption {
   name: string;
 }
 
+export interface AdminRoleListItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  permission_count: number;
+  user_count: number;
+}
+
+export interface AdminRoleDetail {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  user_count: number;
+  permissions: AdminPermissionListItem[];
+}
+
 export interface AdminAmenityOption {
   id: string;
   name: string;
@@ -131,4 +149,43 @@ export interface AdminPaymentListItem {
     name: string;
     email: string;
   };
+}
+
+export interface AdminRoomListItem {
+  id: string;
+  hotel_id: string;
+  room_type_id: string;
+  room_number: string;
+  floor: number;
+  status: "available" | "occupied" | "maintenance";
+  created_at?: string;
+  updated_at?: string;
+  Hotel?: {
+    id: string;
+    name: string;
+  };
+  RoomType?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface AdminPermissionListItem {
+  id: string;
+  code: string;
+  module: string;
+  description?: string | null;
+  role_count: number;
+}
+
+export interface AdminImageItem {
+  id: string;
+  entity_type: "hotel" | "room_type";
+  entity_id: string;
+  url: string;
+  public_id: string;
+  sort_order: number;
+  is_primary: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
