@@ -1,26 +1,58 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { adminService } from "@/api/adminService";
-import type { UsersListItem, AdminUserDetail, UserRole } from "@/types/user";
-import type { ApiResponse, PaginationMeta } from "@/types/common";
+import type { AdminRoleOption } from "@/features/admin/types";
+import {
+  AdminBadge,
+  AdminButton,
+  AdminEmptyState,
+  AdminInputClassName,
+  AdminMessage,
+  AdminModal,
+  AdminPageHeader,
+  AdminPagination,
+  AdminPanel,
+  AdminToolbar,
+} from "@/features/admin/components/AdminPrimitives";
+import {
+  formatCurrency,
+  formatDateTime,
+  getErrorMessage,
+} from "@/features/admin/utils";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
+import type { PaginationMeta } from "@/types/common";
+import type { AdminUserDetail, UsersListItem } from "@/types/user";
 
-const AdminUsersPage: React.FC = () => {
-  // --- State ---
+const defaultMeta: PaginationMeta = {
+  total: 0,
+  page: 1,
+  limit: 10,
+  has_next: false,
+};
+
+const emptyCreateForm = {
+  name: "",
+  email: "",
+  phone: "",
+  password: "",
+  role_ids: [] as string[],
+};
+
+const AdminUsersPage = () => {
   const [users, setUsers] = useState<UsersListItem[]>([]);
+  const [roles, setRoles] = useState<AdminRoleOption[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(defaultMeta);
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState<UserRole[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta>({
-    total: 0,
-    page: 1,
-    limit: 10,
-    has_next: false,
-  });
-  const [resultCreateUser, setResultCreateUser] =
-    useState<ApiResponse<UsersListItem>>();
+  const [submitting, setSubmitting] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const [pageSuccess, setPageSuccess] = useState("");
+  const [roleError, setRoleError] = useState("");
+
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput, 450);
 
   const [filters, setFilters] = useState({
-    q: "",
     role_name: "",
-    is_active: "" as string | boolean,
+    is_active: "",
     sort: "created_at_desc",
     page: 1,
     limit: 10,
@@ -29,539 +61,620 @@ const AdminUsersPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(
     null,
   );
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const [editFormData, setEditFormData] = useState({
+  const [editForm, setEditForm] = useState({
+    id: "",
     name: "",
     phone: "",
     is_active: true,
   });
-
-  const [createFormData, setCreateFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    role_ids: [] as string[],
-  });
-
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-  const timerSearch = useRef(null);
-  // --- API Calls ---
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = {
-        ...filters,
-        is_active:
-          filters.is_active === "" ? undefined : filters.is_active === "true",
-      };
-      const response = await adminService.getUsers(params as any);
 
-      if (response.statusCode === 200) {
+  const userQuery = useMemo(
+    () => ({
+      q: debouncedSearch,
+      role_name: filters.role_name || undefined,
+      is_active:
+        filters.is_active === ""
+          ? undefined
+          : filters.is_active === "true",
+      sort: filters.sort,
+      page: filters.page,
+      limit: filters.limit,
+    }),
+    [debouncedSearch, filters],
+  );
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        setPageError("");
+        const response = await adminService.getUsers(userQuery);
         setUsers(response.data);
         setMeta(response.meta);
+      } catch (error) {
+        setPageError(
+          getErrorMessage(error, "Không tải được danh sách users."),
+        );
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      alert("Error fetching users");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+    };
+
+    void fetchUsers();
+  }, [userQuery]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-  useEffect(() => {
-    adminService.getRoles().then((res) => {
-      if (res.statusCode === 200) setRoles(res.data);
-    });
+    const fetchRoles = async () => {
+      try {
+        const response = await adminService.getRoles();
+        setRoles(response.data);
+        setRoleError("");
+      } catch (error) {
+        setRoles([]);
+        setRoleError(
+          getErrorMessage(
+            error,
+            "Không tải được danh sách role. Bạn vẫn có thể test các thao tác khác.",
+          ),
+        );
+      }
+    };
+
+    void fetchRoles();
   }, []);
 
-  // --- Handlers ---
-  const handleViewDetail = async (id: string) => {
-    const res = await adminService.getUserById(id);
-    if (res.statusCode === 200) {
-      setSelectedUser(res.data);
-      setIsDetailModalOpen(true);
+  useEffect(() => {
+    setFilters((current) => ({ ...current, page: 1 }));
+  }, [debouncedSearch]);
+
+  const resetMessages = () => {
+    setPageError("");
+    setPageSuccess("");
+  };
+
+  const handleOpenCreate = () => {
+    resetMessages();
+    setCreateForm(emptyCreateForm);
+    setCreateOpen(true);
+  };
+
+  const handleViewUser = async (userId: string) => {
+    try {
+      resetMessages();
+      const response = await adminService.getUserById(userId);
+      setSelectedUser(response.data);
+      setDetailOpen(true);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Không tải được chi tiết user."));
     }
   };
 
   const handleOpenEdit = (user: UsersListItem) => {
-    setEditFormData({
+    resetMessages();
+    setEditForm({
+      id: user.id,
       name: user.name,
       phone: user.phone || "",
       is_active: user.is_active,
     });
-    setSelectedUser(user as any);
-    setIsEditModalOpen(true);
-  };
-
-  const handleUpdateUser = async (e: React.SubmitEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
-    const res = await adminService.updateUser(selectedUser.id, editFormData);
-    if (res.statusCode === 200) {
-      setIsEditModalOpen(false);
-      fetchUsers();
-    }
-  };
-
-  const handleCreateUser = async (e: React.SubmitEvent) => {
-    e.preventDefault();
-    try {
-      const res = await adminService.createUser(createFormData);
-      if (res.statusCode === 201) {
-        setIsCreateModalOpen(false);
-        setCreateFormData({
-          name: "",
-          email: "",
-          phone: "",
-          password: "",
-          role_ids: [],
-        });
-        fetchUsers();
-      }
-    } catch (error) {
-      setResultCreateUser(error.data);
-    }
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-    const res = await adminService.deleteUser(id);
-    if (res.statusCode === 200) {
-      fetchUsers();
-    } else {
-      alert(res.message || "Failed to delete user");
-    }
+    setEditOpen(true);
   };
 
   const handleOpenRoles = (user: UsersListItem) => {
-    setSelectedUser(user as any);
-    setSelectedRoleIds(user.roles.map((r) => r.id));
-    setIsRoleModalOpen(true);
+    resetMessages();
+    setSelectedUser({
+      ...user,
+      stats: {
+        total_bookings: 0,
+        total_spent: 0,
+        last_booking_at: null,
+        avg_rating_given: 0,
+      },
+    });
+    setSelectedRoleIds(user.roles.map((role) => role.id));
+    setRoleOpen(true);
+  };
+
+  const reloadUsers = async () => {
+    const response = await adminService.getUsers(userQuery);
+    setUsers(response.data);
+    setMeta(response.meta);
+  };
+
+  const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await adminService.createUser(createForm);
+      setCreateOpen(false);
+      setCreateForm(emptyCreateForm);
+      setPageSuccess("Đã tạo user mới.");
+      await reloadUsers();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Tạo user thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await adminService.updateUser(editForm.id, {
+        name: editForm.name,
+        phone: editForm.phone,
+        is_active: editForm.is_active,
+      });
+      setEditOpen(false);
+      setPageSuccess("Đã cập nhật user.");
+      await reloadUsers();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Cập nhật user thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleUpdateRoles = async () => {
     if (!selectedUser) return;
-    const res = await adminService.updateUserRoles(selectedUser.id, {
-      role_ids: selectedRoleIds,
-    });
-    if (res.statusCode === 200) {
-      setIsRoleModalOpen(false);
-      fetchUsers();
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await adminService.updateUserRoles(selectedUser.id, {
+        role_ids: selectedRoleIds,
+      });
+      setRoleOpen(false);
+      setPageSuccess("Đã cập nhật role cho user.");
+      await reloadUsers();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Cập nhật role thất bại."));
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handelOnSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (timerSearch.current) clearTimeout(timerSearch.current);
+  const handleDeleteUser = async (user: UsersListItem) => {
+    const confirmed = window.confirm(`Xóa user ${user.email}?`);
+    if (!confirmed) return;
 
-    timerSearch.current = setTimeout(() => {
-      setFilters((prev) => ({
-        ...prev,
-        q: e.target.value,
-        page: 1,
-      }));
-    }, 1000);
+    try {
+      resetMessages();
+      await adminService.deleteUser(user.id);
+      setPageSuccess("Đã xóa user.");
+      await reloadUsers();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Xóa user thất bại."));
+    }
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Admin: Manage Users</h1>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded font-bold"
-        >
-          + Add New User
-        </button>
-      </div>
+    <>
+      <AdminPageHeader
+        title="User Management"
+        description="Tạo, cập nhật, phân quyền và kiểm tra thống kê cơ bản của user."
+        action={<AdminButton onClick={handleOpenCreate}>Tạo user</AdminButton>}
+      />
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 bg-gray-100 p-4 rounded">
+      {pageError ? <AdminMessage tone="error" message={pageError} /> : null}
+      {pageSuccess ? (
+        <AdminMessage tone="success" message={pageSuccess} />
+      ) : null}
+      {roleError ? <AdminMessage tone="info" message={roleError} /> : null}
+
+      <AdminToolbar>
         <input
-          type="text"
-          placeholder="Search..."
-          className="border p-2 rounded"
-          onChange={handelOnSearch}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          className={`${AdminInputClassName} md:max-w-xs`}
+          placeholder="Tìm theo tên, email, số điện thoại"
         />
+
         <select
-          className="border p-2 rounded"
+          className={`${AdminInputClassName} md:max-w-xs`}
           value={filters.role_name}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              role_name: e.target.value,
+          onChange={(event) =>
+            setFilters((current) => ({
+              ...current,
+              role_name: event.target.value,
               page: 1,
             }))
           }
         >
-          <option value="">All Roles</option>
-          {roles.map((r) => (
-            <option key={r.id} value={r.name}>
-              {r.name}
+          <option value="">Tất cả role</option>
+          {roles.map((role) => (
+            <option key={role.id} value={role.name}>
+              {role.name}
             </option>
           ))}
         </select>
+
         <select
-          className="border p-2 rounded"
-          value={filters.is_active.toString()}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              is_active: e.target.value,
+          className={`${AdminInputClassName} md:max-w-[180px]`}
+          value={filters.is_active}
+          onChange={(event) =>
+            setFilters((current) => ({
+              ...current,
+              is_active: event.target.value,
               page: 1,
             }))
           }
         >
-          <option value="">All Status</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="">Tất cả trạng thái</option>
+          <option value="true">Đang active</option>
+          <option value="false">Đã khóa</option>
         </select>
+
         <select
-          className="border p-2 rounded"
+          className={`${AdminInputClassName} md:max-w-[180px]`}
           value={filters.sort}
-          onChange={(e) =>
-            setFilters((prev) => ({ ...prev, sort: e.target.value, page: 1 }))
+          onChange={(event) =>
+            setFilters((current) => ({
+              ...current,
+              sort: event.target.value,
+              page: 1,
+            }))
           }
         >
-          <option value="created_at_desc">Newest</option>
-          <option value="created_at_asc">Oldest</option>
-          <option value="name_asc">Name A-Z</option>
-          <option value="name_desc">Name Z-A</option>
+          <option value="created_at_desc">Mới nhất</option>
+          <option value="created_at_asc">Cũ nhất</option>
+          <option value="name_asc">Tên A-Z</option>
+          <option value="name_desc">Tên Z-A</option>
         </select>
-      </div>
+      </AdminToolbar>
 
-      {/* Table */}
-      <div className="overflow-x-auto border rounded">
-        <table className="w-full text-left">
-          <thead className="bg-gray-200">
-            <tr>
-              <th>STT</th>
-              <th className="p-2">Name</th>
-              <th className="p-2">Email</th>
-              <th className="p-2">Roles</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="p-4 text-center">
-                  Loading...
-                </td>
-              </tr>
-            ) : (
-              users.map((user, index) => (
-                <tr key={user.id} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{index + 1}</td>
-                  <td className="p-2 font-medium">{user.name}</td>
-                  <td className="p-2">{user.email}</td>
-                  <td className="p-2">
-                    {user.roles.map((r) => r.name).join(", ")}
-                  </td>
-                  <td className="p-2">
-                    {user.is_active ? "✅ Active" : "❌ Inactive"}
-                  </td>
-                  <td className="p-2 space-x-2">
-                    <button
-                      onClick={() => handleViewDetail(user.id)}
-                      className="bg-blue-500 text-white px-2 py-1 rounded text-sm"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(user)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleOpenRoles(user)}
-                      className="bg-indigo-500 text-white px-2 py-1 rounded text-sm"
-                    >
-                      Roles
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded text-sm"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex justify-between items-center py-2">
-        <p className="text-sm">Total: {meta.total}</p>
-        <div className="space-x-2">
-          <button
-            disabled={filters.page === 1}
-            onClick={() => setFilters((p) => ({ ...p, page: p.page - 1 }))}
-            className="border px-3 py-1 rounded disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <span>Page {filters.page}</span>
-          <button
-            disabled={!meta.has_next}
-            onClick={() => setFilters((p) => ({ ...p, page: p.page + 1 }))}
-            className="border px-3 py-1 rounded disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-
-      {/* Modals */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Create New User</h2>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <input
-                type="text"
-                className="w-full border p-2 rounded"
-                placeholder="Name"
-                required
-                value={createFormData.name}
-                onChange={(e) =>
-                  setCreateFormData((p) => ({ ...p, name: e.target.value }))
-                }
-              />
-              <input
-                type="email"
-                className="w-full border p-2 rounded"
-                placeholder="Email"
-                required
-                value={createFormData.email}
-                onChange={(e) =>
-                  setCreateFormData((p) => ({ ...p, email: e.target.value }))
-                }
-              />
-              <input
-                type="text"
-                className="w-full border p-2 rounded"
-                placeholder="Phone"
-                value={createFormData.phone}
-                onChange={(e) =>
-                  setCreateFormData((p) => ({ ...p, phone: e.target.value }))
-                }
-              />
-              <input
-                type="password"
-                className="w-full border p-2 rounded"
-                placeholder="Password"
-                required
-                value={createFormData.password}
-                onChange={(e) =>
-                  setCreateFormData((p) => ({ ...p, password: e.target.value }))
-                }
-              />
-              <div className="space-y-1">
-                <p className="text-sm font-bold">Assign Roles:</p>
-                <div className="flex flex-wrap gap-2">
-                  {roles.map((role) => (
-                    <label
-                      key={role.id}
-                      className="flex items-center gap-1 border p-1 rounded text-xs cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={createFormData.role_ids.includes(role.id)}
-                        onChange={() => {
-                          setCreateFormData((p) => ({
-                            ...p,
-                            role_ids: p.role_ids.includes(role.id)
-                              ? p.role_ids.filter((id) => id !== role.id)
-                              : [...p.role_ids, role.id],
-                          }));
-                        }}
-                      />
-                      {role.name}
-                    </label>
+      <AdminPanel title="Danh sách users">
+        {loading ? (
+          <p className="text-sm text-slate-500">Đang tải dữ liệu...</p>
+        ) : users.length === 0 ? (
+          <AdminEmptyState message="Không có user nào khớp bộ lọc." />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-slate-200 text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3 font-medium">User</th>
+                    <th className="px-3 py-3 font-medium">Roles</th>
+                    <th className="px-3 py-3 font-medium">Status</th>
+                    <th className="px-3 py-3 font-medium">Created</th>
+                    <th className="px-3 py-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-slate-100">
+                      <td className="px-3 py-4 align-top">
+                        <p className="font-medium text-slate-900">
+                          {user.name}
+                        </p>
+                        <p className="text-slate-500">{user.email}</p>
+                        <p className="text-slate-400">{user.phone || "--"}</p>
+                      </td>
+                      <td className="px-3 py-4 align-top">
+                        <div className="flex flex-wrap gap-2">
+                          {user.roles.length === 0 ? (
+                            <span className="text-slate-400">No role</span>
+                          ) : (
+                            user.roles.map((role) => (
+                              <AdminBadge key={role.id} label={role.name} />
+                            ))
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 align-top">
+                        <AdminBadge
+                          label={user.is_active ? "active" : "inactive"}
+                        />
+                      </td>
+                      <td className="px-3 py-4 align-top text-slate-500">
+                        {formatDateTime(user.created_at)}
+                      </td>
+                      <td className="px-3 py-4 align-top">
+                        <div className="flex flex-wrap gap-2">
+                          <AdminButton onClick={() => handleViewUser(user.id)}>
+                            Xem
+                          </AdminButton>
+                          <AdminButton
+                            variant="secondary"
+                            onClick={() => handleOpenEdit(user)}
+                          >
+                            Sửa
+                          </AdminButton>
+                          <AdminButton
+                            variant="secondary"
+                            onClick={() => handleOpenRoles(user)}
+                            disabled={roles.length === 0}
+                          >
+                            Roles
+                          </AdminButton>
+                          <AdminButton
+                            variant="danger"
+                            onClick={() => handleDeleteUser(user)}
+                          >
+                            Xóa
+                          </AdminButton>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </div>
-              {resultCreateUser && resultCreateUser?.errors?.length > 0 && (
-                <div className="rounded-md bg-red-50 p-4">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">
-                        {resultCreateUser.message} |
-                        {resultCreateUser.errors?.join(", ")}
-                      </h3>
-                    </div>
-                  </div>
-                </div>
-              )}
+                </tbody>
+              </table>
+            </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded font-bold"
-                >
-                  Create
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 bg-gray-200 py-2 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <AdminPagination
+              meta={meta}
+              onPageChange={(page) =>
+                setFilters((current) => ({ ...current, page }))
+              }
+            />
+          </>
+        )}
+      </AdminPanel>
+
+      <AdminModal
+        open={createOpen}
+        title="Tạo user mới"
+        description="Form tối giản để test flow tạo user và gán role."
+        onClose={() => setCreateOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={handleCreateUser}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              required
+              className={AdminInputClassName}
+              placeholder="Họ tên"
+              value={createForm.name}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+            />
+            <input
+              required
+              type="email"
+              className={AdminInputClassName}
+              placeholder="Email"
+              value={createForm.email}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  email: event.target.value,
+                }))
+              }
+            />
+            <input
+              className={AdminInputClassName}
+              placeholder="Số điện thoại"
+              value={createForm.phone}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  phone: event.target.value,
+                }))
+              }
+            />
+            <input
+              required
+              type="password"
+              className={AdminInputClassName}
+              placeholder="Mật khẩu"
+              value={createForm.password}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+            />
           </div>
-        </div>
-      )}
 
-      {isDetailModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">User Detail</h2>
-            <div className="space-y-2 text-sm">
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Roles</p>
+            {roles.length === 0 ? (
+              <p className="text-sm text-slate-400">Không có dữ liệu role.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {roles.map((role) => (
+                  <label
+                    key={role.id}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={createForm.role_ids.includes(role.id)}
+                      onChange={() =>
+                        setCreateForm((current) => ({
+                          ...current,
+                          role_ids: current.role_ids.includes(role.id)
+                            ? current.role_ids.filter((id) => id !== role.id)
+                            : [...current.role_ids, role.id],
+                        }))
+                      }
+                    />
+                    {role.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-3">
+            <AdminButton
+              variant="secondary"
+              onClick={() => setCreateOpen(false)}
+            >
+              Hủy
+            </AdminButton>
+            <AdminButton type="submit" disabled={submitting}>
+              {submitting ? "Đang tạo..." : "Tạo user"}
+            </AdminButton>
+          </div>
+        </form>
+      </AdminModal>
+
+      <AdminModal
+        open={detailOpen}
+        title="Chi tiết user"
+        onClose={() => setDetailOpen(false)}
+      >
+        {selectedUser ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 text-sm text-slate-600">
               <p>
-                <strong>ID:</strong> {selectedUser.id}
+                <span className="font-medium text-slate-900">Tên:</span>{" "}
+                {selectedUser.name}
               </p>
               <p>
-                <strong>Name:</strong> {selectedUser.name}
+                <span className="font-medium text-slate-900">Email:</span>{" "}
+                {selectedUser.email}
               </p>
               <p>
-                <strong>Email:</strong> {selectedUser.email}
+                <span className="font-medium text-slate-900">Phone:</span>{" "}
+                {selectedUser.phone || "--"}
               </p>
               <p>
-                <strong>Phone:</strong> {selectedUser.phone || "N/A"}
-              </p>
-              <p>
-                <strong>Status:</strong>{" "}
+                <span className="font-medium text-slate-900">Trạng thái:</span>{" "}
                 {selectedUser.is_active ? "Active" : "Inactive"}
               </p>
-              <hr />
-              <p className="font-bold">Stats:</p>
-              <p>Total Bookings: {selectedUser.stats?.total_bookings}</p>
-              <p>Total Spent: {selectedUser.stats?.total_spent}</p>
-              <p>Avg Rating: {selectedUser.stats?.avg_rating_given}</p>
+              <p>
+                <span className="font-medium text-slate-900">Tạo lúc:</span>{" "}
+                {formatDateTime(selectedUser.created_at)}
+              </p>
             </div>
-            <button
-              onClick={() => setIsDetailModalOpen(false)}
-              className="mt-6 w-full bg-gray-200 py-2 rounded"
-            >
-              Close
-            </button>
+            <div className="space-y-2 text-sm text-slate-600">
+              <p>
+                <span className="font-medium text-slate-900">Total bookings:</span>{" "}
+                {selectedUser.stats.total_bookings}
+              </p>
+              <p>
+                <span className="font-medium text-slate-900">Total spent:</span>{" "}
+                {formatCurrency(selectedUser.stats.total_spent)}
+              </p>
+              <p>
+                <span className="font-medium text-slate-900">Last booking:</span>{" "}
+                {formatDateTime(selectedUser.stats.last_booking_at)}
+              </p>
+              <p>
+                <span className="font-medium text-slate-900">Avg rating:</span>{" "}
+                {selectedUser.stats.avg_rating_given ?? "--"}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </AdminModal>
 
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Edit User</h2>
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <input
-                type="text"
-                className="w-full border p-2 rounded"
-                placeholder="Name"
-                value={editFormData.name}
-                onChange={(e) =>
-                  setEditFormData((p) => ({ ...p, name: e.target.value }))
-                }
-              />
-              <input
-                type="text"
-                className="w-full border p-2 rounded"
-                placeholder="Phone"
-                value={editFormData.phone}
-                onChange={(e) =>
-                  setEditFormData((p) => ({ ...p, phone: e.target.value }))
-                }
-              />
-              <label className="flex items-center gap-2">
+      <AdminModal
+        open={editOpen}
+        title="Cập nhật user"
+        onClose={() => setEditOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={handleUpdateUser}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              required
+              className={AdminInputClassName}
+              placeholder="Họ tên"
+              value={editForm.name}
+              onChange={(event) =>
+                setEditForm((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+            />
+            <input
+              className={AdminInputClassName}
+              placeholder="Số điện thoại"
+              value={editForm.phone}
+              onChange={(event) =>
+                setEditForm((current) => ({
+                  ...current,
+                  phone: event.target.value,
+                }))
+              }
+            />
+          </div>
+
+          <label className="flex items-center gap-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={editForm.is_active}
+              onChange={(event) =>
+                setEditForm((current) => ({
+                  ...current,
+                  is_active: event.target.checked,
+                }))
+              }
+            />
+            User đang active
+          </label>
+
+          <div className="flex flex-wrap justify-end gap-3">
+            <AdminButton variant="secondary" onClick={() => setEditOpen(false)}>
+              Hủy
+            </AdminButton>
+            <AdminButton type="submit" disabled={submitting}>
+              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+            </AdminButton>
+          </div>
+        </form>
+      </AdminModal>
+
+      <AdminModal
+        open={roleOpen}
+        title="Quản lý role"
+        description="Chọn role mới cho user rồi cập nhật."
+        onClose={() => setRoleOpen(false)}
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {roles.map((role) => (
+              <label
+                key={role.id}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              >
                 <input
                   type="checkbox"
-                  checked={editFormData.is_active}
-                  onChange={(e) =>
-                    setEditFormData((p) => ({
-                      ...p,
-                      is_active: e.target.checked,
-                    }))
+                  checked={selectedRoleIds.includes(role.id)}
+                  onChange={() =>
+                    setSelectedRoleIds((current) =>
+                      current.includes(role.id)
+                        ? current.filter((id) => id !== role.id)
+                        : [...current, role.id],
+                    )
                   }
                 />
-                Active
+                {role.name}
               </label>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 bg-gray-200 py-2 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
-        </div>
-      )}
 
-      {isRoleModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Manage Roles</h2>
-            <div className="space-y-2">
-              {roles.map((role) => (
-                <label
-                  key={role.id}
-                  className="flex items-center gap-2 border p-2 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedRoleIds.includes(role.id)}
-                    onChange={() => {
-                      setSelectedRoleIds((prev) =>
-                        prev.includes(role.id)
-                          ? prev.filter((r) => r !== role.id)
-                          : [...prev, role.id],
-                      );
-                    }}
-                  />
-                  {role.name}
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={handleUpdateRoles}
-                className="flex-1 bg-indigo-600 text-white py-2 rounded"
-              >
-                Update
-              </button>
-              <button
-                onClick={() => setIsRoleModalOpen(false)}
-                className="flex-1 bg-gray-200 py-2 rounded"
-              >
-                Cancel
-              </button>
-            </div>
+          <div className="flex flex-wrap justify-end gap-3">
+            <AdminButton variant="secondary" onClick={() => setRoleOpen(false)}>
+              Hủy
+            </AdminButton>
+            <AdminButton onClick={handleUpdateRoles} disabled={submitting}>
+              {submitting ? "Đang cập nhật..." : "Cập nhật roles"}
+            </AdminButton>
           </div>
         </div>
-      )}
-    </div>
+      </AdminModal>
+    </>
   );
 };
 

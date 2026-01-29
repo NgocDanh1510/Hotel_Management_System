@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import authService from "@/api/authService";
-import type { AuthUser, LoginRequest, RegisterRequest } from "@/types/auth";
+import type { AuthUser, LoginRequest } from "@/types/auth";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface AuthContextType {
