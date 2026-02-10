@@ -65,7 +65,7 @@ export const getTotalPages = (meta: PaginationMeta) => {
 export const getOffsetFromPage = (page: number, limit: number) =>
   Math.max(0, (page - 1) * limit);
 
-export const toShortId = (value: string) => value.slice(0, 8);
+export const toShortId = (value: string) => (value ? value.slice(0, 8) : "--");
 
 export const getBookingStatusTargets = (status: string) => {
   switch (status) {

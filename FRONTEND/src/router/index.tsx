@@ -21,8 +21,18 @@ import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
 import AdminRolesPage from "@/pages/admin/AdminRolesPage";
 import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
 import AdminImagesPage from "@/pages/admin/AdminImagesPage";
+import PartnerDashboard from "@/pages/partner/PartnerDashboard";
+import PartnerHotelsPage from "@/pages/partner/PartnerHotelsPage";
+import PartnerRoomTypesPage from "@/pages/partner/PartnerRoomTypesPage";
+import PartnerRoomsPage from "@/pages/partner/PartnerRoomsPage";
+import PartnerBookingsPage from "@/pages/partner/PartnerBookingsPage";
+import PartnerReviewsPage from "@/pages/partner/PartnerReviewsPage";
+import PartnerImagesPage from "@/pages/partner/PartnerImagesPage";
+import PartnerAmenitiesPage from "@/pages/partner/PartnerAmenitiesPage";
+import PartnerPaymentsPage from "@/pages/partner/PartnerPaymentsPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
+import PartnerRoute from "./PartnerRoute";
 import LayoutClient from "@/components/layouts/LayoutClient";
 
 const router = createBrowserRouter([
@@ -128,6 +138,53 @@ const router = createBrowserRouter([
       {
         path: "images",
         element: <AdminImagesPage />,
+      },
+    ],
+  },
+  // Partner Routes
+  {
+    path: "/partner",
+    element: <PartnerRoute />,
+    children: [
+      {
+        index: true,
+        element: <PartnerDashboard />,
+      },
+      {
+        path: "dashboard",
+        element: <PartnerDashboard />,
+      },
+      {
+        path: "hotels",
+        element: <PartnerHotelsPage />,
+      },
+      {
+        path: "room-types",
+        element: <PartnerRoomTypesPage />,
+      },
+      {
+        path: "rooms",
+        element: <PartnerRoomsPage />,
+      },
+      {
+        path: "bookings",
+        element: <PartnerBookingsPage />,
+      },
+      {
+        path: "reviews",
+        element: <PartnerReviewsPage />,
+      },
+      {
+        path: "images",
+        element: <PartnerImagesPage />,
+      },
+      {
+        path: "amenities",
+        element: <PartnerAmenitiesPage />,
+      },
+      {
+        path: "payments",
+        element: <PartnerPaymentsPage />,
       },
     ],
   },
