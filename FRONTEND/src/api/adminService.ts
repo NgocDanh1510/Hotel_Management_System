@@ -4,6 +4,8 @@ import type {
   AdminAmenityOption,
   AdminBookingListItem,
   AdminHotelListItem,
+  HotelImageItem,
+  HotelImageUploadPayload,
   AdminImageItem,
   AdminPaymentListItem,
   AdminPermissionListItem,
@@ -212,6 +214,48 @@ export const adminService = {
   deleteHotel: async (id: string | number) => {
     const response = await axiosInstance.delete<ApiResponse<{ id: string }>>(
       `/admin/hotels/${id}`,
+    );
+    return response.data;
+  },
+
+  getHotelImages: async (hotelId: string | number) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/admin/hotels/${hotelId}/images`,
+    );
+    return response.data;
+  },
+
+  addHotelImage: async (
+    hotelId: string | number,
+    data: HotelImageUploadPayload,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/admin/hotels/${hotelId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteHotelImage: async (
+    hotelId: string | number,
+    imageId: string | number,
+  ) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/admin/hotels/${hotelId}/images/${imageId}`,
     );
     return response.data;
   },

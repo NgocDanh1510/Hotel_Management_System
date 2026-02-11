@@ -7,6 +7,8 @@ import type {
   AdminDistrictOption,
   AdminHotelListItem,
   AdminRoomTypeListItem,
+  HotelImageItem,
+  HotelImageUploadPayload,
 } from "@/features/admin/types";
 import {
   AdminBadge,
@@ -26,6 +28,7 @@ import {
   getErrorMessage,
   getOffsetFromPage,
 } from "@/features/admin/utils";
+import HotelImageManager from "@/features/admin/components/HotelImageManager";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import type { PaginationMeta } from "@/types/common";
 import type { UsersListItem } from "@/types/user";
@@ -92,9 +95,12 @@ const AdminHotelsPage = () => {
     null,
   );
   const [roomTypes, setRoomTypes] = useState<AdminRoomTypeListItem[]>([]);
+  const [hotelImages, setHotelImages] = useState<HotelImageItem[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [imageManagerOpen, setImageManagerOpen] = useState(false);
   const [roomTypesOpen, setRoomTypesOpen] = useState(false);
   const [roomTypeCreateOpen, setRoomTypeCreateOpen] = useState(false);
 
@@ -245,6 +251,19 @@ const AdminHotelsPage = () => {
     setMeta(response.meta);
   };
 
+  const loadHotelImages = async (hotelId: string) => {
+    try {
+      setImagesLoading(true);
+      const response = await adminService.getHotelImages(hotelId);
+      setHotelImages(response.data);
+    } catch (error) {
+      setHotelImages([]);
+      setPageError(getErrorMessage(error, "Không tải được danh sách ảnh."));
+    } finally {
+      setImagesLoading(false);
+    }
+  };
+
   const handleOpenCreate = () => {
     resetMessages();
     setCreateHotelForm(emptyCreateHotelForm);
@@ -300,6 +319,50 @@ const AdminHotelsPage = () => {
       }
     }
     setEditOpen(true);
+  };
+
+  const handleOpenImageManager = async (hotel: AdminHotelListItem) => {
+    resetMessages();
+    setSelectedHotel(hotel);
+    setHotelImages([]);
+    setImageManagerOpen(true);
+    await loadHotelImages(hotel.id);
+  };
+
+  const handleAddHotelImage = async (payload: HotelImageUploadPayload) => {
+    if (!selectedHotel) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await adminService.addHotelImage(selectedHotel.id, payload);
+      setPageSuccess("Đã thêm ảnh hotel.");
+      await loadHotelImages(selectedHotel.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Thêm ảnh hotel thất bại."));
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteHotelImage = async (image: HotelImageItem) => {
+    if (!selectedHotel) return;
+
+    const confirmed = window.confirm(`Xóa ảnh ${image.public_id}?`);
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await adminService.deleteHotelImage(selectedHotel.id, image.id);
+      setPageSuccess("Đã xóa ảnh hotel.");
+      await loadHotelImages(selectedHotel.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Xóa ảnh hotel thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleUpdateHotel = async (event: FormEvent<HTMLFormElement>) => {
@@ -518,6 +581,12 @@ const AdminHotelsPage = () => {
                         <div className="flex flex-wrap gap-2">
                           <AdminButton onClick={() => handleOpenRoomTypes(hotel)}>
                             Room types
+                          </AdminButton>
+                          <AdminButton
+                            variant="secondary"
+                            onClick={() => void handleOpenImageManager(hotel)}
+                          >
+                            Ảnh
                           </AdminButton>
                           <AdminButton
                             variant="secondary"
@@ -916,6 +985,14 @@ const AdminHotelsPage = () => {
           </label>
 
           <div className="flex flex-wrap justify-end gap-3">
+            {selectedHotel ? (
+              <AdminButton
+                variant="ghost"
+                onClick={() => void handleOpenImageManager(selectedHotel)}
+              >
+                Chỉnh sửa ảnh
+              </AdminButton>
+            ) : null}
             <AdminButton variant="secondary" onClick={() => setEditOpen(false)}>
               Hủy
             </AdminButton>
@@ -924,6 +1001,21 @@ const AdminHotelsPage = () => {
             </AdminButton>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        open={imageManagerOpen}
+        title={`Chỉnh sửa ảnh - ${selectedHotel?.name || ""}`}
+        description="Ảnh hotel được quản lý riêng, không lưu qua form cập nhật thông tin hotel."
+        onClose={() => setImageManagerOpen(false)}
+      >
+        <HotelImageManager
+          images={hotelImages}
+          loading={imagesLoading}
+          submitting={submitting}
+          onAdd={handleAddHotelImage}
+          onDelete={handleDeleteHotelImage}
+        />
       </AdminModal>
 
       <AdminModal

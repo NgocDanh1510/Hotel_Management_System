@@ -1,4 +1,5 @@
 const adminHotelService = require("../../services/admin/hotels.service");
+const imageService = require("../../services/image.service");
 const { sendSuccess, sendError } = require("../../utils/apiResponse");
 
 /**
@@ -46,19 +47,87 @@ const createHotel = async (req, res, next) => {
       data: hotel,
     });
   } catch (error) {
-    if (error.statusCode === 404) {
+    if (error.statusCode) {
       return sendError(res, {
-        statusCode: 404,
-        message: error.message,
-      });
-    }
-    if (error.statusCode === 400) {
-      return sendError(res, {
-        statusCode: 400,
+        statusCode: error.statusCode,
         message: error.message,
       });
     }
     console.error("Create hotel error:", error);
+    next(error);
+  }
+};
+
+const getHotelImages = async (req, res, next) => {
+  try {
+    const images = await imageService.getHotelImages(
+      req.params.hotelId,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Get hotel images successfully",
+      data: images,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Get hotel images error:", error);
+    next(error);
+  }
+};
+
+const addHotelImage = async (req, res, next) => {
+  try {
+    const image = await imageService.addHotelImage(
+      req.params.hotelId,
+      req.file,
+      req.body,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      message: "Hotel image added successfully",
+      data: image,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Add hotel image error:", error);
+    next(error);
+  }
+};
+
+const deleteHotelImage = async (req, res, next) => {
+  try {
+    await imageService.deleteHotelImage(
+      req.params.hotelId,
+      req.params.imageId,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      statusCode: 200,
+      message: "Hotel image deleted successfully",
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Delete hotel image error:", error);
     next(error);
   }
 };
@@ -200,4 +269,7 @@ module.exports = {
   updateHotel,
   deleteHotel,
   updateHotelStatus,
+  getHotelImages,
+  addHotelImage,
+  deleteHotelImage,
 };

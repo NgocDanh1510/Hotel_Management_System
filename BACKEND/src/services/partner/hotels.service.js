@@ -1,4 +1,4 @@
-const { Hotel, Amenity } = require("../../models");
+const { Hotel, Amenity, sequelize } = require("../../models");
 const { Op } = require("sequelize");
 const adminHotelService = require("../admin/hotels.service");
 
@@ -7,31 +7,43 @@ class PartnerHotelService {
     const { name, slug, amenity_ids, ...otherData } = data;
     const finalSlug = slug || (await adminHotelService.getUniqueSlug(name));
 
-    const hotel = await Hotel.create({
-      name,
-      owner_id: user.user_id,
-      slug: finalSlug,
-      status: "pending",
-      is_active: true,
-      ...otherData,
-    });
+    const transaction = await sequelize.transaction();
+    try {
+      const hotel = await Hotel.create(
+        {
+          name,
+          owner_id: user.user_id,
+          slug: finalSlug,
+          status: "pending",
+          is_active: true,
+          ...otherData,
+        },
+        { transaction },
+      );
 
-    if (amenity_ids && amenity_ids.length > 0) {
-      const amenities = await Amenity.findAll({
-        where: { id: amenity_ids },
-        attributes: ["id", "name"],
-      });
+      if (amenity_ids && amenity_ids.length > 0) {
+        const amenities = await Amenity.findAll({
+          where: { id: amenity_ids },
+          attributes: ["id", "name"],
+          transaction,
+        });
 
-      if (amenities.length !== amenity_ids.length) {
-        const error = new Error("One or more amenities do not exist");
-        error.statusCode = 400;
-        throw error;
+        if (amenities.length !== amenity_ids.length) {
+          const error = new Error("One or more amenities do not exist");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        await hotel.addAmenities(amenities, { transaction });
       }
 
-      await hotel.addAmenities(amenities);
-    }
+      await transaction.commit();
 
-    return hotel.toJSON();
+      return hotel.toJSON();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async listHotels(query, user) {

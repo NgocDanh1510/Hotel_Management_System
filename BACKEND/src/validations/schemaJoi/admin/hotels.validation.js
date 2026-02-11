@@ -39,9 +39,10 @@ const updateHotelSchema = Joi.object({
   star_rating: Joi.number().min(1).max(5).optional(),
   contact_email: Joi.string().email().max(255).optional(),
   contact_phone: Joi.string().max(20).optional(),
+  slug: Joi.string().max(220).optional(),
   is_active: Joi.boolean().optional(),
   status: Joi.string().valid("pending", "approved", "rejected").optional(),
-});
+}).unknown(false);
 
 module.exports = {
   createHotelSchema,

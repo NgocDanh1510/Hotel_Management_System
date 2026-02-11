@@ -4,6 +4,8 @@ import { partnerService } from "@/api/partnerService";
 import type {
   AdminCityOption,
   AdminDistrictOption,
+  HotelImageItem,
+  HotelImageUploadPayload,
 } from "@/features/admin/types";
 import {
   AdminBadge,
@@ -23,6 +25,7 @@ import {
   getErrorMessage,
   getOffsetFromPage,
 } from "@/features/admin/utils";
+import HotelImageManager from "@/features/admin/components/HotelImageManager";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import type { PaginationMeta } from "@/types/common";
 import type {
@@ -82,6 +85,8 @@ const PartnerHotelsPage = () => {
   const [editDistricts, setEditDistricts] = useState<AdminDistrictOption[]>([]);
   const [amenities, setAmenities] = useState<PartnerAmenityOption[]>([]);
   const [roomTypes, setRoomTypes] = useState<PartnerRoomTypeListItem[]>([]);
+  const [hotelImages, setHotelImages] = useState<HotelImageItem[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<PartnerHotelListItem | null>(
     null,
   );
@@ -90,6 +95,7 @@ const PartnerHotelsPage = () => {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [imageManagerOpen, setImageManagerOpen] = useState(false);
   const [roomTypesOpen, setRoomTypesOpen] = useState(false);
   const [roomTypeCreateOpen, setRoomTypeCreateOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
@@ -225,6 +231,19 @@ const PartnerHotelsPage = () => {
     setMeta(response.meta);
   };
 
+  const loadHotelImages = async (hotelId: string) => {
+    try {
+      setImagesLoading(true);
+      const response = await partnerService.getHotelImages(hotelId);
+      setHotelImages(response.data);
+    } catch (error) {
+      setHotelImages([]);
+      setPageError(getErrorMessage(error, "Không tải được danh sách ảnh."));
+    } finally {
+      setImagesLoading(false);
+    }
+  };
+
   const openCreate = () => {
     resetMessages();
     setCreateHotelForm(emptyCreateHotelForm);
@@ -285,6 +304,50 @@ const PartnerHotelsPage = () => {
     }
 
     setEditOpen(true);
+  };
+
+  const openImageManager = async (hotel: PartnerHotelListItem) => {
+    resetMessages();
+    setSelectedHotel(hotel);
+    setHotelImages([]);
+    setImageManagerOpen(true);
+    await loadHotelImages(hotel.id);
+  };
+
+  const handleAddHotelImage = async (payload: HotelImageUploadPayload) => {
+    if (!selectedHotel) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.addHotelImage(selectedHotel.id, payload);
+      setPageSuccess("Đã thêm ảnh hotel.");
+      await loadHotelImages(selectedHotel.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Thêm ảnh hotel thất bại."));
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteHotelImage = async (image: HotelImageItem) => {
+    if (!selectedHotel) return;
+
+    const confirmed = window.confirm(`Xóa ảnh ${image.public_id}?`);
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.deleteHotelImage(selectedHotel.id, image.id);
+      setPageSuccess("Đã xóa ảnh hotel.");
+      await loadHotelImages(selectedHotel.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Xóa ảnh hotel thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleUpdateHotel = async (event: FormEvent<HTMLFormElement>) => {
@@ -539,6 +602,12 @@ const PartnerHotelsPage = () => {
                         <div className="flex flex-wrap gap-2">
                           <AdminButton onClick={() => void openRoomTypes(hotel)}>
                             Room types
+                          </AdminButton>
+                          <AdminButton
+                            variant="secondary"
+                            onClick={() => void openImageManager(hotel)}
+                          >
+                            Ảnh
                           </AdminButton>
                           <AdminButton
                             variant="secondary"
@@ -882,6 +951,14 @@ const PartnerHotelsPage = () => {
           </div>
 
           <div className="flex flex-wrap justify-end gap-3">
+            {selectedHotel ? (
+              <AdminButton
+                variant="ghost"
+                onClick={() => void openImageManager(selectedHotel)}
+              >
+                Chỉnh sửa ảnh
+              </AdminButton>
+            ) : null}
             <AdminButton variant="secondary" onClick={() => setEditOpen(false)}>
               Hủy
             </AdminButton>
@@ -890,6 +967,21 @@ const PartnerHotelsPage = () => {
             </AdminButton>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        open={imageManagerOpen}
+        title={`Chỉnh sửa ảnh - ${selectedHotel?.name || ""}`}
+        description="Ảnh hotel được quản lý riêng, không đi qua API cập nhật thông tin hotel."
+        onClose={() => setImageManagerOpen(false)}
+      >
+        <HotelImageManager
+          images={hotelImages}
+          loading={imagesLoading}
+          submitting={submitting}
+          onAdd={handleAddHotelImage}
+          onDelete={handleDeleteHotelImage}
+        />
       </AdminModal>
 
       <AdminModal

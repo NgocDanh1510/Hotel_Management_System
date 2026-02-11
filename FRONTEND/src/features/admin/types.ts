@@ -189,3 +189,14 @@ export interface AdminImageItem {
   created_at?: string;
   updated_at?: string;
 }
+
+export type HotelImageItem = Pick<
+  AdminImageItem,
+  "id" | "url" | "public_id" | "sort_order" | "is_primary"
+>;
+
+export type HotelImageUploadPayload = {
+  file: File;
+  sort_order?: number;
+  is_primary?: boolean;
+};

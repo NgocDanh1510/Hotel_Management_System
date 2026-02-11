@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const partnerHotelsController = require("../../controllers/partner/hotels.controller");
 const partnerRoomTypeController = require("../../controllers/partner/roomType.controller");
+const upload = require("../../middlewares/upload.middleware");
 const { authenticateToken, requirePermission } = require("../../middlewares/auth.middleware");
 const { validateSchema, validateQuery } = require("../../middlewares/validate.middleware");
 const {
@@ -15,6 +16,9 @@ const {
   createRoomTypeSchema,
   listRoomTypesQuerySchema,
 } = require("../../validations/schemaJoi/admin/roomType.validation");
+const {
+  addHotelImageSchema,
+} = require("../../validations/schemaJoi/image.validation");
 
 router.use(authenticateToken);
 
@@ -43,6 +47,26 @@ router.post(
   "/:id/submit-for-review",
   requirePermission("hotel.submit_for_review"),
   partnerHotelsController.submitForReview,
+);
+
+router.get(
+  "/:hotelId/images",
+  requirePermission("image.manage_own_hotel"),
+  partnerHotelsController.getHotelImages,
+);
+
+router.post(
+  "/:hotelId/images",
+  requirePermission("image.manage_own_hotel"),
+  upload.single("file"),
+  validateSchema(addHotelImageSchema),
+  partnerHotelsController.addHotelImage,
+);
+
+router.delete(
+  "/:hotelId/images/:imageId",
+  requirePermission("image.manage_own_hotel"),
+  partnerHotelsController.deleteHotelImage,
 );
 
 router.get(

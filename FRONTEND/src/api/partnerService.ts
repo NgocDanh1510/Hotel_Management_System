@@ -1,6 +1,10 @@
 import axiosInstance from "./axiosInstance";
 import type { ApiResponse, PaginatedResponse } from "@/types/common";
 import type {
+  HotelImageItem,
+  HotelImageUploadPayload,
+} from "@/features/admin/types";
+import type {
   PartnerAmenityOption,
   PartnerBookingDetail,
   PartnerBookingInvoice,
@@ -119,6 +123,42 @@ export const partnerService = {
   submitHotelForReview: async (id: string) => {
     const response = await axiosInstance.post<ApiResponse<PartnerHotelListItem>>(
       `/partner/hotels/${id}/submit-for-review`,
+    );
+    return response.data;
+  },
+
+  getHotelImages: async (hotelId: string) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/partner/hotels/${hotelId}/images`,
+    );
+    return response.data;
+  },
+
+  addHotelImage: async (hotelId: string, data: HotelImageUploadPayload) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/partner/hotels/${hotelId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteHotelImage: async (hotelId: string, imageId: string) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/partner/hotels/${hotelId}/images/${imageId}`,
     );
     return response.data;
   },

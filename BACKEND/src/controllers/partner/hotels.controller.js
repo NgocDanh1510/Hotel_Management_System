@@ -1,4 +1,5 @@
 const partnerHotelService = require("../../services/partner/hotels.service");
+const imageService = require("../../services/image.service");
 const { sendSuccess, sendError } = require("../../utils/apiResponse");
 
 const createHotel = async (req, res, next) => {
@@ -78,9 +79,84 @@ const submitForReview = async (req, res, next) => {
   }
 };
 
+const getHotelImages = async (req, res, next) => {
+  try {
+    const images = await imageService.getHotelImages(
+      req.params.hotelId,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      message: "Hotel images retrieved successfully",
+      data: images,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Partner get hotel images error:", error);
+    next(error);
+  }
+};
+
+const addHotelImage = async (req, res, next) => {
+  try {
+    const image = await imageService.addHotelImage(
+      req.params.hotelId,
+      req.file,
+      req.body,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      statusCode: 201,
+      message: "Hotel image added successfully",
+      data: image,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Partner add hotel image error:", error);
+    next(error);
+  }
+};
+
+const deleteHotelImage = async (req, res, next) => {
+  try {
+    await imageService.deleteHotelImage(
+      req.params.hotelId,
+      req.params.imageId,
+      req.user,
+    );
+
+    return sendSuccess(res, {
+      message: "Hotel image deleted successfully",
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Partner delete hotel image error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   createHotel,
   listHotels,
   updateHotel,
   submitForReview,
+  getHotelImages,
+  addHotelImage,
+  deleteHotelImage,
 };

@@ -3,6 +3,138 @@ const cloudinary = require("../config/cloudinary");
 const { Op } = require("sequelize");
 
 class ImageService {
+  async getHotelImages(hotelId, user) {
+    await this._assertCanManageEntity("hotel", hotelId, user);
+
+    return Image.findAll({
+      where: { entity_type: "hotel", entity_id: hotelId },
+      attributes: ["id", "url", "public_id", "sort_order", "is_primary"],
+      order: [
+        ["sort_order", "ASC"],
+        ["created_at", "ASC"],
+      ],
+    });
+  }
+
+  async addHotelImage(hotelId, file, imageData, user) {
+    await this._assertCanManageEntity("hotel", hotelId, user);
+
+    if (!file) {
+      throw this._error("Image file is required", 400);
+    }
+
+    const upload = await this._uploadToCloudinary(file);
+    let shouldCleanupUpload = true;
+
+    const transaction = await sequelize.transaction();
+    try {
+      const existingImage = await Image.findOne({
+        where: {
+          entity_type: "hotel",
+          entity_id: hotelId,
+          public_id: upload.public_id,
+        },
+        transaction,
+      });
+
+      if (existingImage) {
+        throw this._error("Image public_id already exists for this hotel", 400);
+      }
+
+      const isPrimary = this._parseBoolean(imageData.is_primary);
+
+      if (isPrimary) {
+        await Image.update(
+          { is_primary: false },
+          {
+            where: {
+              entity_type: "hotel",
+              entity_id: hotelId,
+              is_primary: true,
+            },
+            transaction,
+          },
+        );
+      }
+
+      const sortOrder = this._parseOptionalInteger(imageData.sort_order);
+      const maxSortOrder =
+        (await Image.max("sort_order", {
+          where: { entity_type: "hotel", entity_id: hotelId },
+          transaction,
+        })) || 0;
+
+      const image = await Image.create(
+        {
+          entity_type: "hotel",
+          entity_id: hotelId,
+          url: upload.secure_url,
+          public_id: upload.public_id,
+          sort_order: sortOrder !== undefined ? sortOrder : maxSortOrder + 1,
+          is_primary: isPrimary,
+        },
+        { transaction },
+      );
+
+      await transaction.commit();
+      shouldCleanupUpload = false;
+      return image;
+    } catch (error) {
+      await transaction.rollback();
+      if (shouldCleanupUpload && upload?.public_id) {
+        cloudinary.uploader.destroy(upload.public_id).catch((destroyError) => {
+          console.error(
+            `Cloudinary cleanup error for ${upload.public_id}:`,
+            destroyError,
+          );
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteHotelImage(hotelId, imageId, user) {
+    await this._assertCanManageEntity("hotel", hotelId, user);
+
+    const image = await Image.findOne({
+      where: {
+        id: imageId,
+        entity_type: "hotel",
+        entity_id: hotelId,
+      },
+    });
+
+    if (!image) {
+      throw this._error("Image not found", 404);
+    }
+
+    await cloudinary.uploader.destroy(image.public_id);
+
+    const transaction = await sequelize.transaction();
+    try {
+      const wasPrimary = image.is_primary;
+
+      await image.destroy({ transaction });
+
+      if (wasPrimary) {
+        const nextImage = await Image.findOne({
+          where: { entity_type: "hotel", entity_id: hotelId },
+          order: [["sort_order", "ASC"]],
+          transaction,
+        });
+
+        if (nextImage) {
+          await nextImage.update({ is_primary: true }, { transaction });
+        }
+      }
+
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
   /**
    * Upload multiple images to Cloudinary and save to DB.
    *
@@ -250,6 +382,18 @@ class ImageService {
     const error = new Error(message);
     error.statusCode = statusCode;
     return error;
+  }
+
+  _parseBoolean(value) {
+    return value === true || value === "true";
+  }
+
+  _parseOptionalInteger(value) {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+
+    return Number(value);
   }
 
   _uploadToCloudinary(file) {

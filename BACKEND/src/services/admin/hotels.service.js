@@ -115,27 +115,62 @@ class AdminHotelService {
     // Generate unique slug
     const finalSlug = slug || (await this.getUniqueSlug(name));
 
-    const hotel = await Hotel.create({
-      name,
-      owner_id,
-      slug: finalSlug,
-      ...otherData,
-      is_active: true,
-    });
-    if (amenity_ids && amenity_ids.length > 0) {
-      const amenities = await Amenity.findAll({
-        where: { id: amenity_ids },
-        attributes: ["id", "name"],
-      });
-      if (amenities.length !== amenity_ids.length) {
-        const error = new Error("One or more amenities do not exist");
-        error.statusCode = 400;
-        throw error;
-      }
-      await hotel.addAmenities(amenities);
-    }
+    const transaction = await sequelize.transaction();
+    try {
+      const hotel = await Hotel.create(
+        {
+          name,
+          owner_id,
+          slug: finalSlug,
+          ...otherData,
+          is_active: true,
+        },
+        { transaction },
+      );
 
-    return hotel.toJSON();
+      if (amenity_ids && amenity_ids.length > 0) {
+        const amenities = await Amenity.findAll({
+          where: { id: amenity_ids },
+          attributes: ["id", "name"],
+          transaction,
+        });
+        if (amenities.length !== amenity_ids.length) {
+          const error = new Error("One or more amenities do not exist");
+          error.statusCode = 400;
+          throw error;
+        }
+        await hotel.addAmenities(amenities, { transaction });
+      }
+
+      await transaction.commit();
+
+      return hotel.toJSON();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  _pickHotelUpdateData(data) {
+    const allowedFields = [
+      "name",
+      "slug",
+      "description",
+      "address",
+      "star_rating",
+      "contact_email",
+      "contact_phone",
+      "district_id",
+      "status",
+      "is_active",
+    ];
+
+    return allowedFields.reduce((updateData, field) => {
+      if (data[field] !== undefined) {
+        updateData[field] = data[field];
+      }
+      return updateData;
+    }, {});
   }
 
   /**
@@ -388,8 +423,8 @@ class AdminHotelService {
       }
     }
 
-    // Update hotel
-    await hotel.update(data);
+    // Update hotel fields only. Image management uses dedicated APIs.
+    await hotel.update(this._pickHotelUpdateData(data));
 
     return hotel.toJSON();
   }

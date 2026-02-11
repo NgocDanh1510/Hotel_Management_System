@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const adminHotelsController = require("../../controllers/admin/hotels.controller");
+const upload = require("../../middlewares/upload.middleware");
 const {
   authenticateToken,
   requirePermission,
@@ -16,6 +17,9 @@ const {
   createRoomTypeSchema,
   listRoomTypesQuerySchema,
 } = require("../../validations/schemaJoi/admin/roomType.validation");
+const {
+  addHotelImageSchema,
+} = require("../../validations/schemaJoi/image.validation");
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -65,6 +69,26 @@ router.delete(
   "/:id",
   requirePermission("hotel.manage_all"),
   adminHotelsController.deleteHotel,
+);
+
+router.get(
+  "/:hotelId/images",
+  requirePermission("image.manage_all"),
+  adminHotelsController.getHotelImages,
+);
+
+router.post(
+  "/:hotelId/images",
+  requirePermission("image.manage_all"),
+  upload.single("file"),
+  validateSchema(addHotelImageSchema),
+  adminHotelsController.addHotelImage,
+);
+
+router.delete(
+  "/:hotelId/images/:imageId",
+  requirePermission("image.manage_all"),
+  adminHotelsController.deleteHotelImage,
 );
 
 /**

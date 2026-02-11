@@ -14,7 +14,13 @@ const reorderImagesSchema = Joi.object({
   ).min(1).required(),
 });
 
+const addHotelImageSchema = Joi.object({
+  sort_order: Joi.number().integer().min(0).optional(),
+  is_primary: Joi.boolean().optional(),
+}).unknown(false);
+
 module.exports = {
   uploadImagesSchema,
   reorderImagesSchema,
+  addHotelImageSchema,
 };
