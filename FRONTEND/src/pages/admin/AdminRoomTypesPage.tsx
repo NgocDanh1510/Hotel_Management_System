@@ -7,8 +7,9 @@ import {
   type SetStateAction,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { partnerService } from "@/api/partnerService";
+import { adminService } from "@/api/adminService";
 import type {
+  AdminRoomTypeListItem,
   HotelImageItem,
   HotelImageUploadPayload,
 } from "@/features/admin/types";
@@ -32,7 +33,6 @@ import {
 import HotelImageManager from "@/features/admin/components/HotelImageManager";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import type { PaginationMeta } from "@/types/common";
-import type { PartnerRoomTypeListItem } from "@/types/partner";
 
 const defaultMeta: PaginationMeta = {
   total: 0,
@@ -53,11 +53,11 @@ const emptyRoomTypeForm = {
   size_sqm: 0,
 };
 
-const PartnerRoomTypesPage = () => {
+const AdminRoomTypesPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hotelId = searchParams.get("hotelId") || "";
-  const [roomTypes, setRoomTypes] = useState<PartnerRoomTypeListItem[]>([]);
+  const [roomTypes, setRoomTypes] = useState<AdminRoomTypeListItem[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(defaultMeta);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +72,7 @@ const PartnerRoomTypesPage = () => {
   });
 
   const [selectedRoomType, setSelectedRoomType] =
-    useState<PartnerRoomTypeListItem | null>(null);
+    useState<AdminRoomTypeListItem | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [imageManagerOpen, setImageManagerOpen] = useState(false);
@@ -107,13 +107,11 @@ const PartnerRoomTypesPage = () => {
       try {
         setLoading(true);
         setPageError("");
-        const response = await partnerService.getRoomTypeList(query);
+        const response = await adminService.getRoomTypeList(query);
         setRoomTypes(response.data);
         setMeta(response.meta);
       } catch (error) {
-        setPageError(
-          getErrorMessage(error, "Không tải được room type của partner."),
-        );
+        setPageError(getErrorMessage(error, "Không tải được room types."));
       } finally {
         setLoading(false);
       }
@@ -132,7 +130,7 @@ const PartnerRoomTypesPage = () => {
   };
 
   const reloadRoomTypes = async () => {
-    const response = await partnerService.getRoomTypeList(query);
+    const response = await adminService.getRoomTypeList(query);
     setRoomTypes(response.data);
     setMeta(response.meta);
   };
@@ -146,7 +144,7 @@ const PartnerRoomTypesPage = () => {
     setCreateOpen(true);
   };
 
-  const openEdit = (roomType: PartnerRoomTypeListItem) => {
+  const openEdit = (roomType: AdminRoomTypeListItem) => {
     resetMessages();
     setSelectedRoomType(roomType);
     setEditForm({
@@ -166,7 +164,7 @@ const PartnerRoomTypesPage = () => {
   const loadRoomTypeImages = async (roomTypeId: string) => {
     try {
       setImagesLoading(true);
-      const response = await partnerService.getRoomTypeImages(roomTypeId);
+      const response = await adminService.getRoomTypeImages(roomTypeId);
       setRoomTypeImages(response.data);
     } catch (error) {
       setRoomTypeImages([]);
@@ -176,7 +174,7 @@ const PartnerRoomTypesPage = () => {
     }
   };
 
-  const openImageManager = async (roomType: PartnerRoomTypeListItem) => {
+  const openImageManager = async (roomType: AdminRoomTypeListItem) => {
     resetMessages();
     setSelectedRoomType(roomType);
     setRoomTypeImages([]);
@@ -190,7 +188,7 @@ const PartnerRoomTypesPage = () => {
     try {
       setSubmitting(true);
       resetMessages();
-      await partnerService.createRoomTypeWithHotel({
+      await adminService.createRoomTypeWithHotel({
         hotel_id: createForm.hotel_id,
         name: createForm.name,
         description: createForm.description || undefined,
@@ -217,7 +215,7 @@ const PartnerRoomTypesPage = () => {
     try {
       setSubmitting(true);
       resetMessages();
-      await partnerService.updateRoomType(editForm.id, {
+      await adminService.updateRoomType(editForm.id, {
         name: editForm.name,
         description: editForm.description || undefined,
         base_price: editForm.base_price,
@@ -237,14 +235,14 @@ const PartnerRoomTypesPage = () => {
     }
   };
 
-  const handleDelete = async (roomType: PartnerRoomTypeListItem) => {
+  const handleDelete = async (roomType: AdminRoomTypeListItem) => {
     const confirmed = window.confirm(`Xóa room type ${roomType.name}?`);
     if (!confirmed) return;
 
     try {
       setSubmitting(true);
       resetMessages();
-      await partnerService.deleteRoomType(roomType.id);
+      await adminService.deleteRoomType(roomType.id);
       setPageSuccess("Đã xóa room type.");
       await reloadRoomTypes();
     } catch (error) {
@@ -260,7 +258,7 @@ const PartnerRoomTypesPage = () => {
     try {
       setSubmitting(true);
       resetMessages();
-      await partnerService.addRoomTypeImage(selectedRoomType.id, payload);
+      await adminService.addRoomTypeImage(selectedRoomType.id, payload);
       setPageSuccess("Đã thêm ảnh room type.");
       await loadRoomTypeImages(selectedRoomType.id);
     } catch (error) {
@@ -280,7 +278,7 @@ const PartnerRoomTypesPage = () => {
     try {
       setSubmitting(true);
       resetMessages();
-      await partnerService.deleteRoomTypeImage(selectedRoomType.id, image.id);
+      await adminService.deleteRoomTypeImage(selectedRoomType.id, image.id);
       setPageSuccess("Đã xóa ảnh room type.");
       await loadRoomTypeImages(selectedRoomType.id);
     } catch (error) {
@@ -290,28 +288,28 @@ const PartnerRoomTypesPage = () => {
     }
   };
 
-  const goToRooms = (roomType: PartnerRoomTypeListItem) => {
+  const goToRooms = (roomType: AdminRoomTypeListItem) => {
     const targetHotelId = roomType.hotel_id || roomType.Hotel?.id || hotelId;
     const params = new URLSearchParams({ roomTypeId: roomType.id });
     if (targetHotelId) params.set("hotelId", targetHotelId);
-    navigate(`/partner/rooms?${params.toString()}`);
+    navigate(`/admin/rooms?${params.toString()}`);
   };
 
   return (
     <>
       <AdminPageHeader
-        title="Partner Room Types"
+        title="Room Type Management"
         description={
           hotelId
             ? `Đang lọc room type theo hotel ${selectedHotelName || hotelId}.`
-            : "Quản lý room type thuộc các khách sạn bạn đang phụ trách."
+            : "Quản lý danh sách room type của tất cả khách sạn."
         }
         action={
           <div className="flex flex-wrap gap-2">
             {hotelId ? (
               <AdminButton
                 variant="secondary"
-                onClick={() => navigate("/partner/room-types")}
+                onClick={() => navigate("/admin/room-types")}
               >
                 Bỏ lọc hotel
               </AdminButton>
@@ -366,7 +364,6 @@ const PartnerRoomTypesPage = () => {
                     <th className="px-3 py-3 font-medium">Hotel</th>
                     <th className="px-3 py-3 font-medium">Occupancy</th>
                     <th className="px-3 py-3 font-medium">Rooms</th>
-                    <th className="px-3 py-3 font-medium">Media</th>
                     <th className="px-3 py-3 font-medium">Price</th>
                     <th className="px-3 py-3 font-medium">Created</th>
                     <th className="px-3 py-3 font-medium">Action</th>
@@ -395,10 +392,6 @@ const PartnerRoomTypesPage = () => {
                       <td className="px-3 py-4 align-top text-slate-500">
                         {roomType.available_rooms_count ?? 0}/
                         {roomType.total_rooms}
-                      </td>
-                      <td className="px-3 py-4 align-top text-slate-500">
-                        <p>{roomType.images?.length ?? 0} ảnh</p>
-                        <p>{roomType.amenities?.length ?? 0} tiện ích</p>
                       </td>
                       <td className="px-3 py-4 align-top text-slate-500">
                         {formatCurrency(
@@ -678,4 +671,4 @@ const RoomTypeInputs = <T extends RoomTypeNumberForm>({
   </>
 );
 
-export default PartnerRoomTypesPage;
+export default AdminRoomTypesPage;

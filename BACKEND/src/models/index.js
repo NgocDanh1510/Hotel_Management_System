@@ -91,6 +91,11 @@ RoomType.hasMany(Image, {
 Room.belongsTo(Hotel, { foreignKey: "hotel_id" });
 Room.belongsTo(RoomType, { foreignKey: "room_type_id" });
 Room.hasMany(Booking, { foreignKey: "room_id" });
+Room.hasMany(Image, {
+  foreignKey: "entity_id",
+  constraints: false,
+  scope: { entity_type: "room" },
+});
 
 // Booking
 Booking.belongsTo(User, { foreignKey: "user_id" });

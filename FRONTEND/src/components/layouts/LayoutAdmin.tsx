@@ -22,6 +22,7 @@ const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { label: "Users", path: "/admin/users", icon: Users },
   { label: "Hotels", path: "/admin/hotels", icon: Hotel },
+  { label: "Room Types", path: "/admin/room-types", icon: BedDouble },
   { label: "Rooms", path: "/admin/rooms", icon: BedDouble },
   { label: "Bookings", path: "/admin/bookings", icon: CalendarCheck },
   { label: "Reviews", path: "/admin/reviews", icon: Star },

@@ -5,8 +5,16 @@ class PartnerRoomService {
     return adminRoomService.listRooms(query, user);
   }
 
+  async createRoom(data, user) {
+    return adminRoomService.createRoom(data, user);
+  }
+
   async updateRoom(roomId, data, user) {
     return adminRoomService.updateRoom(roomId, data, user);
+  }
+
+  async deleteRoom(roomId, user) {
+    return adminRoomService.deleteRoom(roomId, user);
   }
 
   async bulkUpdateStatus(data, user) {

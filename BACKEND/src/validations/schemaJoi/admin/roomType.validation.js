@@ -9,9 +9,28 @@ const createRoomTypeSchema = Joi.object({
   total_rooms: Joi.number().integer().min(1).required(),
   bed_type: Joi.string().max(50).allow(null, "").optional(),
   size_sqm: Joi.number().positive().allow(null).optional(),
+}).unknown(false);
+
+const createRoomTypeWithHotelSchema = createRoomTypeSchema.keys({
+  hotel_id: Joi.string().guid().required(),
 });
 
+const updateRoomTypeSchema = Joi.object({
+  name: Joi.string().max(100).optional(),
+  description: Joi.string().allow(null, "").optional(),
+  base_price: Joi.number().greater(0).optional(),
+  currency: Joi.string().length(3).uppercase().optional(),
+  max_occupancy: Joi.number().integer().min(1).max(20).optional(),
+  total_rooms: Joi.number().integer().min(1).optional(),
+  bed_type: Joi.string().max(50).allow(null, "").optional(),
+  size_sqm: Joi.number().positive().allow(null).optional(),
+})
+  .min(1)
+  .unknown(false);
+
 const listRoomTypesQuerySchema = Joi.object({
+  hotel_id: Joi.string().guid().optional(),
+  hotelId: Joi.string().guid().optional(),
   max_occupancy_min: Joi.number().integer().min(1).optional(),
   max_occupancy_max: Joi.number().integer().min(1).optional(),
   base_price_min: Joi.number().min(0).optional(),
@@ -34,5 +53,7 @@ const listRoomTypesQuerySchema = Joi.object({
 
 module.exports = {
   createRoomTypeSchema,
+  createRoomTypeWithHotelSchema,
+  updateRoomTypeSchema,
   listRoomTypesQuerySchema,
 };

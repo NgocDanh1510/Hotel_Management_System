@@ -80,9 +80,21 @@ type PaymentFilters = OffsetFilters & {
 
 type RoomFilters = OffsetFilters & {
   hotel_id?: string;
+  hotelId?: string;
   room_type_id?: string;
+  roomTypeId?: string;
   status?: "available" | "occupied" | "maintenance";
   floor?: number;
+};
+
+type RoomTypeFilters = OffsetFilters & {
+  hotel_id?: string;
+  hotelId?: string;
+  max_occupancy_min?: number;
+  max_occupancy_max?: number;
+  base_price_min?: number;
+  base_price_max?: number;
+  currency?: string;
 };
 
 type CreateUserPayload = {
@@ -125,6 +137,20 @@ type CreateRoomTypePayload = {
   total_rooms: number;
   bed_type?: string;
   size_sqm?: number | null;
+};
+
+type CreateRoomTypeWithHotelPayload = CreateRoomTypePayload & {
+  hotel_id: string;
+};
+
+type UpdateRoomTypePayload = Partial<CreateRoomTypePayload>;
+
+type CreateRoomPayload = {
+  hotel_id: string;
+  room_type_id: string;
+  room_number: string;
+  floor?: number;
+  status?: "available" | "occupied" | "maintenance";
 };
 
 export const adminService = {
@@ -329,6 +355,21 @@ export const adminService = {
     return response.data;
   },
 
+  getRoomTypeList: async (params?: RoomTypeFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<AdminRoomTypeListItem[]>
+    >("/admin/room-types", { params });
+    return response.data;
+  },
+
+  createRoomTypeWithHotel: async (data: CreateRoomTypeWithHotelPayload) => {
+    const response = await axiosInstance.post<ApiResponse<AdminRoomTypeListItem>>(
+      "/admin/room-types",
+      data,
+    );
+    return response.data;
+  },
+
   createRoomType: async (
     hotelId: string | number,
     data: CreateRoomTypePayload,
@@ -340,10 +381,78 @@ export const adminService = {
     return response.data;
   },
 
+  updateRoomType: async (
+    id: string | number,
+    data: UpdateRoomTypePayload,
+  ) => {
+    const response = await axiosInstance.put<ApiResponse<AdminRoomTypeListItem>>(
+      `/admin/room-types/${id}`,
+      data,
+    );
+    return response.data;
+  },
+
+  deleteRoomType: async (id: string | number) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/admin/room-types/${id}`,
+    );
+    return response.data;
+  },
+
+  getRoomTypeImages: async (roomTypeId: string | number) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/admin/room-types/${roomTypeId}/images`,
+    );
+    return response.data;
+  },
+
+  addRoomTypeImage: async (
+    roomTypeId: string | number,
+    data: HotelImageUploadPayload,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/admin/room-types/${roomTypeId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteRoomTypeImage: async (
+    roomTypeId: string | number,
+    imageId: string | number,
+  ) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/admin/room-types/${roomTypeId}/images/${imageId}`,
+    );
+    return response.data;
+  },
+
   getRooms: async (params?: RoomFilters) => {
     const response = await axiosInstance.get<
       PaginatedResponse<AdminRoomListItem[]>
     >("/admin/rooms", { params });
+    return response.data;
+  },
+
+  createRoom: async (data: CreateRoomPayload) => {
+    const response = await axiosInstance.post<ApiResponse<AdminRoomListItem>>(
+      "/admin/rooms",
+      data,
+    );
     return response.data;
   },
 
@@ -359,6 +468,52 @@ export const adminService = {
     const response = await axiosInstance.put<ApiResponse<AdminRoomListItem>>(
       `/admin/rooms/${id}`,
       data,
+    );
+    return response.data;
+  },
+
+  deleteRoom: async (id: string | number) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/admin/rooms/${id}`,
+    );
+    return response.data;
+  },
+
+  getRoomImages: async (roomId: string | number) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/admin/rooms/${roomId}/images`,
+    );
+    return response.data;
+  },
+
+  addRoomImage: async (roomId: string | number, data: HotelImageUploadPayload) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/admin/rooms/${roomId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteRoomImage: async (
+    roomId: string | number,
+    imageId: string | number,
+  ) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/admin/rooms/${roomId}/images/${imageId}`,
     );
     return response.data;
   },

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { adminService } from "@/api/adminService";
 import locationService from "@/api/locationService";
 import type {
@@ -65,6 +66,7 @@ const emptyRoomTypeForm = {
 };
 
 const AdminHotelsPage = () => {
+  const navigate = useNavigate();
   const [hotels, setHotels] = useState<AdminHotelListItem[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(defaultMeta);
   const [loading, setLoading] = useState(true);
@@ -579,8 +581,22 @@ const AdminHotelsPage = () => {
                       </td>
                       <td className="px-3 py-4 align-top">
                         <div className="flex flex-wrap gap-2">
-                          <AdminButton onClick={() => handleOpenRoomTypes(hotel)}>
-                            Room types
+                          <AdminButton
+                            onClick={() =>
+                              navigate(
+                                `/admin/room-types?hotelId=${encodeURIComponent(
+                                  hotel.id,
+                                )}`,
+                              )
+                            }
+                          >
+                            Room Type
+                          </AdminButton>
+                          <AdminButton
+                            variant="ghost"
+                            onClick={() => handleOpenRoomTypes(hotel)}
+                          >
+                            Xem nhanh
                           </AdminButton>
                           <AdminButton
                             variant="secondary"

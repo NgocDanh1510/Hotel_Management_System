@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
 const uploadImagesSchema = Joi.object({
-  entity_type: Joi.string().valid('hotel', 'room_type').required(),
+  entity_type: Joi.string().valid('hotel', 'room_type', 'room').required(),
   entity_id: Joi.string().guid().required(),
 });
 

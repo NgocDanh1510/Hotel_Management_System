@@ -60,6 +60,7 @@ export interface AdminHotelListItem {
 
 export interface AdminRoomTypeListItem {
   id: string;
+  hotel_id?: string;
   name: string;
   description?: string | null;
   max_occupancy: number;
@@ -70,6 +71,12 @@ export interface AdminRoomTypeListItem {
   bed_type?: string | null;
   size_sqm?: number | null;
   created_at?: string;
+  Hotel?: {
+    id: string;
+    name: string;
+  } | null;
+  images?: AdminImageItem[];
+  amenities?: AdminAmenityOption[];
 }
 
 export interface AdminBookingListItem {
@@ -168,6 +175,7 @@ export interface AdminRoomListItem {
     id: string;
     name: string;
   };
+  Images?: AdminImageItem[];
 }
 
 export interface AdminPermissionListItem {

@@ -1,4 +1,4 @@
-const { Image, Hotel, RoomType, sequelize } = require("../models");
+const { Image, Hotel, RoomType, Room, sequelize } = require("../models");
 const cloudinary = require("../config/cloudinary");
 const { Op } = require("sequelize");
 
@@ -133,6 +133,181 @@ class ImageService {
       await transaction.rollback();
       throw error;
     }
+  }
+
+  async getRoomTypeImages(roomTypeId, user) {
+    return this.getEntityImages("room_type", roomTypeId, user);
+  }
+
+  async addRoomTypeImage(roomTypeId, file, imageData, user) {
+    return this.addEntityImage("room_type", roomTypeId, file, imageData, user);
+  }
+
+  async deleteRoomTypeImage(roomTypeId, imageId, user) {
+    return this.deleteEntityImage("room_type", roomTypeId, imageId, user);
+  }
+
+  async getRoomImages(roomId, user) {
+    return this.getEntityImages("room", roomId, user);
+  }
+
+  async addRoomImage(roomId, file, imageData, user) {
+    return this.addEntityImage("room", roomId, file, imageData, user);
+  }
+
+  async deleteRoomImage(roomId, imageId, user) {
+    return this.deleteEntityImage("room", roomId, imageId, user);
+  }
+
+  async getEntityImages(entityType, entityId, user) {
+    await this._assertCanManageEntity(entityType, entityId, user);
+
+    return Image.findAll({
+      where: { entity_type: entityType, entity_id: entityId },
+      attributes: ["id", "url", "public_id", "sort_order", "is_primary"],
+      order: [
+        ["sort_order", "ASC"],
+        ["created_at", "ASC"],
+      ],
+    });
+  }
+
+  async addEntityImage(entityType, entityId, file, imageData, user) {
+    await this._assertCanManageEntity(entityType, entityId, user);
+
+    if (!file) {
+      throw this._error("Image file is required", 400);
+    }
+
+    const upload = await this._uploadToCloudinary(file);
+    let shouldCleanupUpload = true;
+
+    const transaction = await sequelize.transaction();
+    try {
+      const existingImage = await Image.findOne({
+        where: {
+          entity_type: entityType,
+          entity_id: entityId,
+          public_id: upload.public_id,
+        },
+        transaction,
+      });
+
+      if (existingImage) {
+        throw this._error("Image public_id already exists for this entity", 400);
+      }
+
+      const isPrimary = this._parseBoolean(imageData.is_primary);
+
+      if (isPrimary) {
+        await Image.update(
+          { is_primary: false },
+          {
+            where: {
+              entity_type: entityType,
+              entity_id: entityId,
+              is_primary: true,
+            },
+            transaction,
+          },
+        );
+      }
+
+      const sortOrder = this._parseOptionalInteger(imageData.sort_order);
+      const maxSortOrder =
+        (await Image.max("sort_order", {
+          where: { entity_type: entityType, entity_id: entityId },
+          transaction,
+        })) || 0;
+
+      const image = await Image.create(
+        {
+          entity_type: entityType,
+          entity_id: entityId,
+          url: upload.secure_url,
+          public_id: upload.public_id,
+          sort_order: sortOrder !== undefined ? sortOrder : maxSortOrder + 1,
+          is_primary: isPrimary,
+        },
+        { transaction },
+      );
+
+      await transaction.commit();
+      shouldCleanupUpload = false;
+      return image;
+    } catch (error) {
+      await transaction.rollback();
+      if (shouldCleanupUpload && upload?.public_id) {
+        cloudinary.uploader.destroy(upload.public_id).catch((destroyError) => {
+          console.error(
+            `Cloudinary cleanup error for ${upload.public_id}:`,
+            destroyError,
+          );
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteEntityImage(entityType, entityId, imageId, user) {
+    await this._assertCanManageEntity(entityType, entityId, user);
+
+    const image = await Image.findOne({
+      where: {
+        id: imageId,
+        entity_type: entityType,
+        entity_id: entityId,
+      },
+    });
+
+    if (!image) {
+      throw this._error("Image not found", 404);
+    }
+
+    await cloudinary.uploader.destroy(image.public_id);
+
+    const transaction = await sequelize.transaction();
+    try {
+      const wasPrimary = image.is_primary;
+
+      await image.destroy({ transaction });
+
+      if (wasPrimary) {
+        const nextImage = await Image.findOne({
+          where: { entity_type: entityType, entity_id: entityId },
+          order: [["sort_order", "ASC"]],
+          transaction,
+        });
+
+        if (nextImage) {
+          await nextImage.update({ is_primary: true }, { transaction });
+        }
+      }
+
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  async deleteImagesForEntity(entityType, entityId, user, transaction) {
+    await this._assertCanManageEntity(entityType, entityId, user);
+
+    const images = await Image.findAll({
+      where: { entity_type: entityType, entity_id: entityId },
+      attributes: ["id", "public_id"],
+      transaction,
+    });
+
+    await Promise.allSettled(
+      images.map((image) => cloudinary.uploader.destroy(image.public_id)),
+    );
+
+    await Image.destroy({
+      where: { entity_type: entityType, entity_id: entityId },
+      transaction,
+    });
   }
 
   /**
@@ -325,7 +500,7 @@ class ImageService {
     const ownerId = await this._getEntityOwnerId(entityType, entityId);
 
     if (!this._hasPermission(user, ownerId)) {
-      throw this._error("You do not have permission to manage images for this hotel", 403);
+      throw this._error("You do not have permission to manage images for this entity", 403);
     }
   }
 
@@ -373,6 +548,18 @@ class ImageService {
       }
 
       return roomType.Hotel?.owner_id;
+    }
+
+    if (entityType === "room") {
+      const room = await Room.findByPk(entityId, {
+        include: [{ model: Hotel, attributes: ["owner_id"] }],
+      });
+
+      if (!room) {
+        throw this._error("Room not found", 404);
+      }
+
+      return room.Hotel?.owner_id;
     }
 
     throw this._error("Invalid entity type", 400);

@@ -8,7 +8,7 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4
       },
       entity_type: {
-        type: Sequelize.ENUM('hotel', 'room_type'),
+        type: Sequelize.ENUM('hotel', 'room_type', 'room'),
         allowNull: false
       },
       entity_id: {

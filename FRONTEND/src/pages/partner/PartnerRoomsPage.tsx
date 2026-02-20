@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { partnerService } from "@/api/partnerService";
+import type {
+  HotelImageItem,
+  HotelImageUploadPayload,
+} from "@/features/admin/types";
 import type { PartnerRoomListItem } from "@/types/partner";
 import {
   AdminBadge,
@@ -18,6 +23,7 @@ import {
   getErrorMessage,
   getOffsetFromPage,
 } from "@/features/admin/utils";
+import HotelImageManager from "@/features/admin/components/HotelImageManager";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import type { PaginationMeta } from "@/types/common";
 
@@ -28,12 +34,27 @@ const defaultMeta: PaginationMeta = {
   has_next: false,
 };
 
+const emptyCreateRoomForm = {
+  hotel_id: "",
+  room_type_id: "",
+  room_number: "",
+  floor: 1,
+  status: "available" as "available" | "maintenance",
+};
+
 const PartnerRoomsPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const hotelId = searchParams.get("hotelId") || "";
+  const roomTypeId = searchParams.get("roomTypeId") || "";
   const [rooms, setRooms] = useState<PartnerRoomListItem[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(defaultMeta);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<PartnerRoomListItem | null>(
+    null,
+  );
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -47,7 +68,12 @@ const PartnerRoomsPage = () => {
   const [bulkStatus, setBulkStatus] = useState<"maintenance" | "available">(
     "maintenance",
   );
+  const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [imageManagerOpen, setImageManagerOpen] = useState(false);
+  const [roomImages, setRoomImages] = useState<HotelImageItem[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyCreateRoomForm);
   const [editForm, setEditForm] = useState({
     id: "",
     room_number: "",
@@ -57,6 +83,8 @@ const PartnerRoomsPage = () => {
 
   const query = useMemo(
     () => ({
+      hotelId: hotelId || undefined,
+      roomTypeId: roomTypeId || undefined,
       q: debouncedSearch || undefined,
       status:
         (filters.status as "available" | "occupied" | "maintenance") ||
@@ -65,7 +93,7 @@ const PartnerRoomsPage = () => {
       offset: getOffsetFromPage(filters.page, filters.limit),
       limit: filters.limit,
     }),
-    [debouncedSearch, filters],
+    [debouncedSearch, filters, hotelId, roomTypeId],
   );
 
   useEffect(() => {
@@ -90,7 +118,16 @@ const PartnerRoomsPage = () => {
 
   useEffect(() => {
     setFilters((current) => ({ ...current, page: 1 }));
-  }, [debouncedSearch]);
+  }, [debouncedSearch, hotelId, roomTypeId]);
+
+  useEffect(() => {
+    setSelectedRoomIds([]);
+  }, [hotelId, roomTypeId]);
+
+  const resetMessages = () => {
+    setPageError("");
+    setPageSuccess("");
+  };
 
   const reloadRooms = async () => {
     const response = await partnerService.getRooms(query);
@@ -98,7 +135,19 @@ const PartnerRoomsPage = () => {
     setMeta(response.meta);
   };
 
+  const openCreate = () => {
+    resetMessages();
+    setCreateForm({
+      ...emptyCreateRoomForm,
+      hotel_id: hotelId,
+      room_type_id: roomTypeId,
+    });
+    setCreateOpen(true);
+  };
+
   const openEdit = (room: PartnerRoomListItem) => {
+    resetMessages();
+    setSelectedRoom(room);
     setEditForm({
       id: room.id,
       room_number: room.room_number,
@@ -108,19 +157,110 @@ const PartnerRoomsPage = () => {
     setEditOpen(true);
   };
 
+  const loadRoomImages = async (roomId: string) => {
+    try {
+      setImagesLoading(true);
+      const response = await partnerService.getRoomImages(roomId);
+      setRoomImages(response.data);
+    } catch (error) {
+      setRoomImages([]);
+      setPageError(getErrorMessage(error, "Không tải được ảnh room."));
+    } finally {
+      setImagesLoading(false);
+    }
+  };
+
+  const openImageManager = async (room: PartnerRoomListItem) => {
+    resetMessages();
+    setSelectedRoom(room);
+    setRoomImages([]);
+    setImageManagerOpen(true);
+    await loadRoomImages(room.id);
+  };
+
+  const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.createRoom(createForm);
+      setCreateOpen(false);
+      setPageSuccess("Đã tạo room.");
+      await reloadRooms();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Tạo room thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleEdit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     try {
       setSubmitting(true);
-      setPageError("");
-      setPageSuccess("");
+      resetMessages();
       await partnerService.updateRoom(editForm.id, editForm);
       setEditOpen(false);
       setPageSuccess("Đã cập nhật room.");
       await reloadRooms();
     } catch (error) {
       setPageError(getErrorMessage(error, "Cập nhật room thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (room: PartnerRoomListItem) => {
+    const confirmed = window.confirm(`Xóa room ${room.room_number}?`);
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.deleteRoom(room.id);
+      setSelectedRoomIds((current) => current.filter((id) => id !== room.id));
+      setPageSuccess("Đã xóa room.");
+      await reloadRooms();
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Xóa room thất bại."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddImage = async (payload: HotelImageUploadPayload) => {
+    if (!selectedRoom) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.addRoomImage(selectedRoom.id, payload);
+      setPageSuccess("Đã thêm ảnh room.");
+      await loadRoomImages(selectedRoom.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Thêm ảnh room thất bại."));
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteImage = async (image: HotelImageItem) => {
+    if (!selectedRoom) return;
+
+    const confirmed = window.confirm(`Xóa ảnh ${image.public_id}?`);
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      resetMessages();
+      await partnerService.deleteRoomImage(selectedRoom.id, image.id);
+      setPageSuccess("Đã xóa ảnh room.");
+      await loadRoomImages(selectedRoom.id);
+    } catch (error) {
+      setPageError(getErrorMessage(error, "Xóa ảnh room thất bại."));
     } finally {
       setSubmitting(false);
     }
@@ -164,6 +304,10 @@ const PartnerRoomsPage = () => {
     }
   };
 
+  const clearRouteFilters = () => {
+    navigate("/partner/rooms");
+  };
+
   const visibleRoomIds = rooms.map((room) => room.id);
   const allSelected =
     visibleRoomIds.length > 0 &&
@@ -173,7 +317,23 @@ const PartnerRoomsPage = () => {
     <>
       <AdminPageHeader
         title="Partner Rooms"
-        description="Quản lý số phòng, room type và trạng thái available hoặc maintenance cho khách sạn của bạn."
+        description={
+          roomTypeId
+            ? `Đang lọc rooms theo room type ${roomTypeId}.`
+            : hotelId
+              ? `Đang lọc rooms theo hotel ${hotelId}.`
+              : "Quản lý số phòng, room type và trạng thái available hoặc maintenance cho khách sạn của bạn."
+        }
+        action={
+          <div className="flex flex-wrap gap-2">
+            {roomTypeId || hotelId ? (
+              <AdminButton variant="secondary" onClick={clearRouteFilters}>
+                Bỏ lọc
+              </AdminButton>
+            ) : null}
+            <AdminButton onClick={openCreate}>Tạo room</AdminButton>
+          </div>
+        }
       />
 
       {pageError ? <AdminMessage tone="error" message={pageError} /> : null}
@@ -307,6 +467,12 @@ const PartnerRoomsPage = () => {
                           </AdminButton>
                           <AdminButton
                             variant="ghost"
+                            onClick={() => void openImageManager(room)}
+                          >
+                            Ảnh
+                          </AdminButton>
+                          <AdminButton
+                            variant="ghost"
                             disabled={submitting || room.status === "available"}
                             onClick={() =>
                               void handleQuickAvailability(room.id, "available")
@@ -322,6 +488,13 @@ const PartnerRoomsPage = () => {
                             }
                           >
                             Set maintenance
+                          </AdminButton>
+                          <AdminButton
+                            variant="danger"
+                            disabled={submitting}
+                            onClick={() => void handleDelete(room)}
+                          >
+                            Xóa
                           </AdminButton>
                         </div>
                       </td>
@@ -342,8 +515,92 @@ const PartnerRoomsPage = () => {
       </AdminPanel>
 
       <AdminModal
+        open={createOpen}
+        title="Tạo room"
+        onClose={() => setCreateOpen(false)}
+      >
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              required
+              className={AdminInputClassName}
+              placeholder="Hotel ID"
+              value={createForm.hotel_id}
+              readOnly={Boolean(hotelId)}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  hotel_id: event.target.value,
+                }))
+              }
+            />
+            <input
+              required
+              className={AdminInputClassName}
+              placeholder="Room type ID"
+              value={createForm.room_type_id}
+              readOnly={Boolean(roomTypeId)}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  room_type_id: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <input
+              required
+              className={AdminInputClassName}
+              placeholder="Số phòng"
+              value={createForm.room_number}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  room_number: event.target.value,
+                }))
+              }
+            />
+            <input
+              type="number"
+              className={AdminInputClassName}
+              placeholder="Tầng"
+              value={createForm.floor}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  floor: Number(event.target.value),
+                }))
+              }
+            />
+            <select
+              className={AdminInputClassName}
+              value={createForm.status}
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  status: event.target.value as "available" | "maintenance",
+                }))
+              }
+            >
+              <option value="available">available</option>
+              <option value="maintenance">maintenance</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap justify-end gap-3">
+            <AdminButton variant="secondary" onClick={() => setCreateOpen(false)}>
+              Hủy
+            </AdminButton>
+            <AdminButton type="submit" disabled={submitting}>
+              {submitting ? "Đang tạo..." : "Tạo room"}
+            </AdminButton>
+          </div>
+        </form>
+      </AdminModal>
+
+      <AdminModal
         open={editOpen}
-        title="Cập nhật room"
+        title={`Cập nhật room - ${selectedRoom?.room_number || ""}`}
         onClose={() => setEditOpen(false)}
       >
         <form className="space-y-4" onSubmit={handleEdit}>
@@ -394,6 +651,22 @@ const PartnerRoomsPage = () => {
             </AdminButton>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        open={imageManagerOpen}
+        title={`Ảnh room - ${selectedRoom?.room_number || ""}`}
+        description="Ảnh room được quản lý riêng, không đi qua API cập nhật thông tin."
+        onClose={() => setImageManagerOpen(false)}
+      >
+        <HotelImageManager
+          images={roomImages}
+          loading={imagesLoading}
+          submitting={submitting}
+          emptyMessage="Room này chưa có ảnh nào."
+          onAdd={handleAddImage}
+          onDelete={handleDeleteImage}
+        />
       </AdminModal>
     </>
   );

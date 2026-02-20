@@ -17,6 +17,7 @@ import AdminBookingsPage from "@/pages/admin/AdminBookingsPage";
 import AdminReviewsPage from "@/pages/admin/AdminReviewsPage";
 import AdminPaymentsPage from "@/pages/admin/AdminPaymentsPage";
 import AdminAmenitiesPage from "@/pages/admin/AdminAmenitiesPage";
+import AdminRoomTypesPage from "@/pages/admin/AdminRoomTypesPage";
 import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
 import AdminRolesPage from "@/pages/admin/AdminRolesPage";
 import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
@@ -27,8 +28,8 @@ import PartnerRoomTypesPage from "@/pages/partner/PartnerRoomTypesPage";
 import PartnerRoomsPage from "@/pages/partner/PartnerRoomsPage";
 import PartnerBookingsPage from "@/pages/partner/PartnerBookingsPage";
 import PartnerReviewsPage from "@/pages/partner/PartnerReviewsPage";
-import PartnerImagesPage from "@/pages/partner/PartnerImagesPage";
-import PartnerAmenitiesPage from "@/pages/partner/PartnerAmenitiesPage";
+// import PartnerImagesPage from "@/pages/partner/PartnerImagesPage";
+// import PartnerAmenitiesPage from "@/pages/partner/PartnerAmenitiesPage";
 import PartnerPaymentsPage from "@/pages/partner/PartnerPaymentsPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
@@ -108,6 +109,10 @@ const router = createBrowserRouter([
         element: <AdminHotelsPage />,
       },
       {
+        path: "room-types",
+        element: <AdminRoomTypesPage />,
+      },
+      {
         path: "rooms",
         element: <AdminRoomsPage />,
       },
@@ -174,14 +179,14 @@ const router = createBrowserRouter([
         path: "reviews",
         element: <PartnerReviewsPage />,
       },
-      {
-        path: "images",
-        element: <PartnerImagesPage />,
-      },
-      {
-        path: "amenities",
-        element: <PartnerAmenitiesPage />,
-      },
+      // {
+      //   path: "images",
+      //   element: <PartnerImagesPage />,
+      // },
+      // {
+      //   path: "amenities",
+      //   element: <PartnerAmenitiesPage />,
+      // },
       {
         path: "payments",
         element: <PartnerPaymentsPage />,

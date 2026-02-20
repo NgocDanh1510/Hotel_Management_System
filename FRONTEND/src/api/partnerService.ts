@@ -59,9 +59,21 @@ type PaymentFilters = OffsetFilters & {
 
 type RoomFilters = OffsetFilters & {
   hotel_id?: string;
+  hotelId?: string;
   room_type_id?: string;
+  roomTypeId?: string;
   status?: "available" | "occupied" | "maintenance";
   floor?: number;
+};
+
+type RoomTypeFilters = OffsetFilters & {
+  hotel_id?: string;
+  hotelId?: string;
+  max_occupancy_min?: number;
+  max_occupancy_max?: number;
+  base_price_min?: number;
+  base_price_max?: number;
+  currency?: string;
 };
 
 type CreateHotelPayload = {
@@ -87,6 +99,20 @@ type CreateRoomTypePayload = {
   total_rooms: number;
   bed_type?: string;
   size_sqm?: number | null;
+};
+
+type CreateRoomTypeWithHotelPayload = CreateRoomTypePayload & {
+  hotel_id: string;
+};
+
+type UpdateRoomTypePayload = Partial<CreateRoomTypePayload>;
+
+type CreateRoomPayload = {
+  hotel_id: string;
+  room_type_id: string;
+  room_number: string;
+  floor?: number;
+  status?: "available" | "occupied" | "maintenance";
 };
 
 export const partnerService = {
@@ -170,10 +196,79 @@ export const partnerService = {
     return response.data;
   },
 
+  getRoomTypeList: async (params?: RoomTypeFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<PartnerRoomTypeListItem[]>
+    >("/partner/room-types", { params });
+    return response.data;
+  },
+
+  createRoomTypeWithHotel: async (data: CreateRoomTypeWithHotelPayload) => {
+    const response = await axiosInstance.post<ApiResponse<PartnerRoomTypeListItem>>(
+      "/partner/room-types",
+      data,
+    );
+    return response.data;
+  },
+
   createRoomType: async (hotelId: string, data: CreateRoomTypePayload) => {
     const response = await axiosInstance.post<ApiResponse<PartnerRoomTypeListItem>>(
       `/partner/hotels/${hotelId}/room-types`,
       data,
+    );
+    return response.data;
+  },
+
+  updateRoomType: async (id: string, data: UpdateRoomTypePayload) => {
+    const response = await axiosInstance.put<ApiResponse<PartnerRoomTypeListItem>>(
+      `/partner/room-types/${id}`,
+      data,
+    );
+    return response.data;
+  },
+
+  deleteRoomType: async (id: string) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/partner/room-types/${id}`,
+    );
+    return response.data;
+  },
+
+  getRoomTypeImages: async (roomTypeId: string) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/partner/room-types/${roomTypeId}/images`,
+    );
+    return response.data;
+  },
+
+  addRoomTypeImage: async (
+    roomTypeId: string,
+    data: HotelImageUploadPayload,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/partner/room-types/${roomTypeId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteRoomTypeImage: async (roomTypeId: string, imageId: string) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/partner/room-types/${roomTypeId}/images/${imageId}`,
     );
     return response.data;
   },
@@ -196,6 +291,14 @@ export const partnerService = {
     return response.data;
   },
 
+  createRoom: async (data: CreateRoomPayload) => {
+    const response = await axiosInstance.post<ApiResponse<PartnerRoomListItem>>(
+      "/partner/rooms",
+      data,
+    );
+    return response.data;
+  },
+
   updateRoom: async (
     id: string,
     data: {
@@ -207,6 +310,49 @@ export const partnerService = {
     const response = await axiosInstance.put<ApiResponse<PartnerRoomListItem>>(
       `/partner/rooms/${id}`,
       data,
+    );
+    return response.data;
+  },
+
+  deleteRoom: async (id: string) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/partner/rooms/${id}`,
+    );
+    return response.data;
+  },
+
+  getRoomImages: async (roomId: string) => {
+    const response = await axiosInstance.get<ApiResponse<HotelImageItem[]>>(
+      `/partner/rooms/${roomId}/images`,
+    );
+    return response.data;
+  },
+
+  addRoomImage: async (roomId: string, data: HotelImageUploadPayload) => {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if (data.sort_order !== undefined) {
+      formData.append("sort_order", data.sort_order.toString());
+    }
+    if (data.is_primary !== undefined) {
+      formData.append("is_primary", data.is_primary.toString());
+    }
+
+    const response = await axiosInstance.post<ApiResponse<HotelImageItem>>(
+      `/partner/rooms/${roomId}/images`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
+
+  deleteRoomImage: async (roomId: string, imageId: string) => {
+    const response = await axiosInstance.delete<ApiResponse<unknown>>(
+      `/partner/rooms/${roomId}/images/${imageId}`,
     );
     return response.data;
   },

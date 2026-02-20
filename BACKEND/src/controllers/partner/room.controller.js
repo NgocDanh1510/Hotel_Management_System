@@ -1,4 +1,5 @@
 const partnerRoomService = require("../../services/partner/room.service");
+const imageService = require("../../services/image.service");
 const { sendSuccess, sendError } = require("../../utils/apiResponse");
 
 class PartnerRoomController {
@@ -20,6 +21,24 @@ class PartnerRoomController {
     }
   }
 
+  async createRoom(req, res) {
+    try {
+      const room = await partnerRoomService.createRoom(req.body, req.user);
+
+      return sendSuccess(res, {
+        statusCode: 201,
+        message: "Room created successfully",
+        data: room,
+      });
+    } catch (error) {
+      console.error("Partner create room error:", error);
+      return sendError(res, {
+        statusCode: error.statusCode || 500,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
   async updateRoom(req, res) {
     try {
       const room = await partnerRoomService.updateRoom(
@@ -34,6 +53,22 @@ class PartnerRoomController {
       });
     } catch (error) {
       console.error("Partner update room error:", error);
+      return sendError(res, {
+        statusCode: error.statusCode || 500,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
+  async deleteRoom(req, res) {
+    try {
+      await partnerRoomService.deleteRoom(req.params.id, req.user);
+
+      return sendSuccess(res, {
+        message: "Room deleted successfully",
+      });
+    } catch (error) {
+      console.error("Partner delete room error:", error);
       return sendError(res, {
         statusCode: error.statusCode || 500,
         message: error.message || "Internal Server Error",
@@ -81,6 +116,66 @@ class PartnerRoomController {
         errors: error.conflicting_room_ids
           ? { conflicting_room_ids: error.conflicting_room_ids }
           : undefined,
+      });
+    }
+  }
+
+  async getRoomImages(req, res) {
+    try {
+      const images = await imageService.getRoomImages(req.params.roomId, req.user);
+
+      return sendSuccess(res, {
+        message: "Room images retrieved successfully",
+        data: images,
+      });
+    } catch (error) {
+      console.error("Partner get room images error:", error);
+      return sendError(res, {
+        statusCode: error.statusCode || 500,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
+  async addRoomImage(req, res) {
+    try {
+      const image = await imageService.addRoomImage(
+        req.params.roomId,
+        req.file,
+        req.body,
+        req.user,
+      );
+
+      return sendSuccess(res, {
+        statusCode: 201,
+        message: "Room image added successfully",
+        data: image,
+      });
+    } catch (error) {
+      console.error("Partner add room image error:", error);
+      return sendError(res, {
+        statusCode: error.statusCode || 500,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
+  async deleteRoomImage(req, res) {
+    try {
+      await imageService.deleteRoomImage(
+        req.params.roomId,
+        req.params.imageId,
+        req.user,
+      );
+
+      return sendSuccess(res, {
+        message: "Room image deleted successfully",
+      });
+    } catch (error) {
+      console.error("Partner delete room image error:", error);
+      return sendError(res, {
+        statusCode: error.statusCode || 500,
+        message: error.message || "Internal Server Error",
       });
     }
   }

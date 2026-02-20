@@ -7,7 +7,10 @@ const {
   requirePermission,
   requireAnyPermission,
 } = require("../../middlewares/auth.middleware");
-const { validateSchema } = require("../../middlewares/validate.middleware");
+const {
+  validateQuery,
+  validateSchema,
+} = require("../../middlewares/validate.middleware");
 const {
   createHotelSchema,
   updateHotelSchema,
@@ -98,6 +101,7 @@ router.delete(
 router.get(
   "/:hotelId/room-types",
   requirePermission("room.manage_all"),
+  validateQuery(listRoomTypesQuerySchema),
   adminRoomTypeController.listRoomTypes,
 );
 

@@ -19,6 +19,7 @@ type HotelImageManagerProps = {
   images: HotelImageItem[];
   loading: boolean;
   submitting: boolean;
+  emptyMessage?: string;
   onAdd: (payload: HotelImageUploadPayload) => Promise<void>;
   onDelete: (image: HotelImageItem) => Promise<void>;
 };
@@ -27,6 +28,7 @@ const HotelImageManager = ({
   images,
   loading,
   submitting,
+  emptyMessage = "Hotel này chưa có ảnh nào.",
   onAdd,
   onDelete,
 }: HotelImageManagerProps) => {
@@ -110,7 +112,7 @@ const HotelImageManager = ({
       {loading ? (
         <p className="text-sm text-slate-500">Đang tải danh sách ảnh...</p>
       ) : images.length === 0 ? (
-        <AdminEmptyState message="Hotel này chưa có ảnh nào." />
+        <AdminEmptyState message={emptyMessage} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {images.map((image) => (

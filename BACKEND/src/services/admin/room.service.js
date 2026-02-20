@@ -1,5 +1,6 @@
 const { Room, RoomType, Hotel, Booking, sequelize } = require("../../models");
 const { Op } = require("sequelize");
+const imageService = require("../image.service");
 
 class AdminRoomService {
   /**
@@ -11,7 +12,9 @@ class AdminRoomService {
   async listRooms(query, user) {
     const {
       hotel_id,
+      hotelId,
       room_type_id,
+      roomTypeId,
       status,
       floor,
       q,
@@ -25,6 +28,8 @@ class AdminRoomService {
 
     const where = {};
     const hotelWhere = {};
+    const selectedHotelId = hotel_id || hotelId;
+    const selectedRoomTypeId = room_type_id || roomTypeId;
 
     // Permission check
     const userPermissions = user.permissions || [];
@@ -39,8 +44,43 @@ class AdminRoomService {
       throw error;
     }
 
-    if (hotel_id) where.hotel_id = hotel_id;
-    if (room_type_id) where.room_type_id = room_type_id;
+    if (selectedHotelId) {
+      const hotel = await Hotel.findByPk(selectedHotelId);
+      if (!hotel) {
+        const error = new Error("Hotel not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (!isAdmin && hotel.owner_id !== user.user_id) {
+        const error = new Error("You do not have permission to access rooms for this hotel");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      where.hotel_id = selectedHotelId;
+    }
+
+    if (selectedRoomTypeId) {
+      const roomType = await RoomType.findByPk(selectedRoomTypeId, {
+        include: [{ model: Hotel, attributes: ["owner_id"] }],
+      });
+
+      if (!roomType) {
+        const error = new Error("Room type not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (!isAdmin && roomType.Hotel?.owner_id !== user.user_id) {
+        const error = new Error("You do not have permission to access rooms for this room type");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      where.room_type_id = selectedRoomTypeId;
+    }
+
     if (status) where.status = status;
     if (floor !== undefined) where.floor = floor;
 
@@ -92,6 +132,50 @@ class AdminRoomService {
         has_next: offsetNum + limitNum < count,
       },
     };
+  }
+
+  async createRoom(data, user) {
+    const { hotel_id, room_type_id, room_number, floor, status } = data;
+
+    const hotel = await Hotel.findByPk(hotel_id);
+    if (!hotel) {
+      const error = new Error("Hotel not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    this._assertCanManageHotel(hotel, user);
+
+    const roomType = await RoomType.findByPk(room_type_id);
+    if (!roomType) {
+      const error = new Error("Room type not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (roomType.hotel_id !== hotel_id) {
+      const error = new Error("Room type does not belong to this hotel");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const existing = await Room.findOne({
+      where: { hotel_id, room_number },
+    });
+
+    if (existing) {
+      const error = new Error("Room number already exists in this hotel");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return Room.create({
+      hotel_id,
+      room_type_id,
+      room_number,
+      floor,
+      status: status || "available",
+    });
   }
 
   /**
@@ -162,6 +246,44 @@ class AdminRoomService {
     return room;
   }
 
+  async deleteRoom(roomId, user) {
+    const room = await Room.findByPk(roomId, {
+      include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+    });
+
+    if (!room) {
+      const error = new Error("Room not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    this._assertCanManageHotel(room.Hotel, user);
+
+    const activeBooking = await Booking.findOne({
+      where: {
+        room_id: roomId,
+        status: { [Op.in]: ["confirmed", "checked_in"] },
+        check_out: { [Op.gt]: new Date().toISOString().split("T")[0] },
+      },
+    });
+
+    if (activeBooking) {
+      const error = new Error("Cannot delete room while there is an active or future booking");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+      await imageService.deleteImagesForEntity("room", roomId, null, transaction);
+      await room.destroy({ transaction });
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
   /**
    * Bulk update room status
    */
@@ -216,6 +338,26 @@ class AdminRoomService {
     await Room.update({ status }, { where: { id: room_ids } });
 
     return { updated_count: rooms.length };
+  }
+
+  _assertCanManageHotel(hotel, user) {
+    const userPermissions = user.permissions || [];
+    const isAdmin = userPermissions.includes("room.manage_all");
+    const isHotelManager = userPermissions.includes("room.manage_own_hotel");
+
+    if (isAdmin) return;
+
+    if (!isHotelManager) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (hotel?.owner_id !== user.user_id) {
+      const error = new Error("You do not have permission to manage rooms for this hotel");
+      error.statusCode = 403;
+      throw error;
+    }
   }
 }
 

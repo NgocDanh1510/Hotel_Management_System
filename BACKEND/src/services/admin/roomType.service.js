@@ -1,5 +1,6 @@
 const { RoomType, Room, Amenity, Image, Hotel, sequelize } = require("../../models");
 const { Op, literal } = require("sequelize");
+const imageService = require("../image.service");
 
 class AdminRoomTypeService {
   /**
@@ -10,7 +11,13 @@ class AdminRoomTypeService {
    * @returns {Promise<Object>} - Room types array and pagination meta
    */
   async listRoomTypes(hotelId, query, user) {
+    return this.listRoomTypesByQuery({ ...query, hotel_id: hotelId }, user);
+  }
+
+  async listRoomTypesByQuery(query, user) {
     const {
+      hotel_id,
+      hotelId,
       max_occupancy_min,
       max_occupancy_max,
       base_price_min,
@@ -22,35 +29,41 @@ class AdminRoomTypeService {
       limit = 20,
     } = query;
 
-    const hotel = await Hotel.findByPk(hotelId);
-    if (!hotel) {
-      const error = new Error("Hotel not found");
-      error.statusCode = 404;
-      throw error;
-    }
+    const selectedHotelId = hotel_id || hotelId;
 
-    // Permission logic: Logic nếu chỉ có room.manage_own_hotel: check hotel.owner_id === caller
     const userPermissions = user.permissions || [];
     const isAdmin = userPermissions.includes("room.manage_all");
     const isHotelManager = userPermissions.includes("room.manage_own_hotel");
 
-    if (!isAdmin) {
-      if (isHotelManager) {
-        if (hotel.owner_id !== user.user_id) {
-          const error = new Error(
-            "You do not have permission to access room types for this hotel"
-          );
-          error.statusCode = 403;
-          throw error;
-        }
-      } else {
-        const error = new Error("Insufficient permissions");
+    if (!isAdmin && !isHotelManager) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (selectedHotelId) {
+      const hotel = await Hotel.findByPk(selectedHotelId);
+      if (!hotel) {
+        const error = new Error("Hotel not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (!isAdmin && hotel.owner_id !== user.user_id) {
+        const error = new Error(
+          "You do not have permission to access room types for this hotel"
+        );
         error.statusCode = 403;
         throw error;
       }
     }
 
-    const where = { hotel_id: hotelId };
+    const where = {};
+    const hotelWhere = {};
+
+    if (selectedHotelId) where.hotel_id = selectedHotelId;
+    if (!isAdmin) hotelWhere.owner_id = user.user_id;
+
     const offsetNum = Math.max(0, parseInt(offset) || 0);
     const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 20));
 
@@ -103,6 +116,11 @@ class AdminRoomTypeService {
       where,
       include: [
         {
+          model: Hotel,
+          where: hotelWhere,
+          attributes: ["id", "name", "owner_id"],
+        },
+        {
           model: Image,
           attributes: ["id", "url", "is_primary"],
         },
@@ -136,6 +154,7 @@ class AdminRoomTypeService {
       const plain = rt.get({ plain: true });
       return {
         id: plain.id,
+        hotel_id: plain.hotel_id,
         name: plain.name,
         description: plain.description,
         max_occupancy: plain.max_occupancy,
@@ -145,6 +164,7 @@ class AdminRoomTypeService {
         available_rooms_count: parseInt(plain.available_rooms_count) || 0,
         images: plain.Images || [],
         amenities: plain.Amenities || [],
+        Hotel: plain.Hotel || null,
         created_at: plain.created_at,
       };
     });
@@ -168,7 +188,15 @@ class AdminRoomTypeService {
    * @returns {Promise<RoomType>}
    */
   async createRoomType(hotelId, data, user) {
-    const hotel = await Hotel.findByPk(hotelId);
+    const selectedHotelId = hotelId || data.hotel_id;
+
+    if (!selectedHotelId) {
+      const error = new Error("hotel_id is required");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const hotel = await Hotel.findByPk(selectedHotelId);
     if (!hotel) {
       const error = new Error("Hotel not found");
       error.statusCode = 404;
@@ -199,7 +227,7 @@ class AdminRoomTypeService {
     // Check unique name in same hotel
     const existingRoomType = await RoomType.findOne({
       where: {
-        hotel_id: hotelId,
+        hotel_id: selectedHotelId,
         name: data.name,
       },
     });
@@ -212,10 +240,110 @@ class AdminRoomTypeService {
 
     const roomType = await RoomType.create({
       ...data,
-      hotel_id: hotelId,
+      hotel_id: selectedHotelId,
     });
 
     return roomType;
+  }
+
+  async updateRoomType(roomTypeId, data, user) {
+    const roomType = await RoomType.findByPk(roomTypeId, {
+      include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+    });
+
+    if (!roomType) {
+      const error = new Error("Room type not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    this._assertCanManageHotel(roomType.Hotel, user);
+
+    if (data.name && data.name !== roomType.name) {
+      const existingRoomType = await RoomType.findOne({
+        where: {
+          hotel_id: roomType.hotel_id,
+          name: data.name,
+          id: { [Op.ne]: roomTypeId },
+        },
+      });
+
+      if (existingRoomType) {
+        const error = new Error("Room type name already exists in this hotel");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
+    const allowedFields = [
+      "name",
+      "description",
+      "base_price",
+      "currency",
+      "max_occupancy",
+      "total_rooms",
+      "bed_type",
+      "size_sqm",
+    ];
+    const updateData = {};
+
+    allowedFields.forEach((field) => {
+      if (data[field] !== undefined) updateData[field] = data[field];
+    });
+
+    await roomType.update(updateData);
+    return roomType;
+  }
+
+  async deleteRoomType(roomTypeId, user) {
+    const roomType = await RoomType.findByPk(roomTypeId, {
+      include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+    });
+
+    if (!roomType) {
+      const error = new Error("Room type not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    this._assertCanManageHotel(roomType.Hotel, user);
+
+    const roomCount = await Room.count({ where: { room_type_id: roomTypeId } });
+    if (roomCount > 0) {
+      const error = new Error("Cannot delete room type while rooms still use it");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+      await imageService.deleteImagesForEntity("room_type", roomTypeId, null, transaction);
+      await roomType.destroy({ transaction });
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  _assertCanManageHotel(hotel, user) {
+    const userPermissions = user.permissions || [];
+    const isAdmin = userPermissions.includes("room.manage_all");
+    const isHotelManager = userPermissions.includes("room.manage_own_hotel");
+
+    if (isAdmin) return;
+
+    if (!isHotelManager) {
+      const error = new Error("Insufficient permissions");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (hotel?.owner_id !== user.user_id) {
+      const error = new Error("You do not have permission to manage room types for this hotel");
+      error.statusCode = 403;
+      throw error;
+    }
   }
 }
 

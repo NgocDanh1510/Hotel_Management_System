@@ -8,11 +8,11 @@ import {
 } from "react-router-dom";
 import {
   BedDouble,
-  Blocks,
+  // Blocks,
   CalendarCheck,
   CreditCard,
   Hotel,
-  Image,
+  // Image,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -59,18 +59,18 @@ const navItems = [
     path: "/partner/reviews",
     icon: Star,
   },
-  {
-    label: "Images",
-    description: "Thư viện ảnh",
-    path: "/partner/images",
-    icon: Image,
-  },
-  {
-    label: "Amenities",
-    description: "Tiện ích lưu trú",
-    path: "/partner/amenities",
-    icon: Blocks,
-  },
+  // {
+  //   label: "Images",
+  //   description: "Thư viện ảnh",
+  //   path: "/partner/images",
+  //   icon: Image,
+  // },
+  // {
+  //   label: "Amenities",
+  //   description: "Tiện ích lưu trú",
+  //   path: "/partner/amenities",
+  //   icon: Blocks,
+  // },
   {
     label: "Payments",
     description: "Giao dịch và doanh thu",

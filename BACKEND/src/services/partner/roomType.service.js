@@ -2,12 +2,24 @@ const { RoomType, Hotel } = require("../../models");
 const adminRoomTypeService = require("../admin/roomType.service");
 
 class PartnerRoomTypeService {
+  async listRoomTypesByQuery(query, user) {
+    return adminRoomTypeService.listRoomTypesByQuery(query, user);
+  }
+
   async listRoomTypes(hotelId, query, user) {
     return adminRoomTypeService.listRoomTypes(hotelId, query, user);
   }
 
   async createRoomType(hotelId, data, user) {
     return adminRoomTypeService.createRoomType(hotelId, data, user);
+  }
+
+  async updateRoomType(roomTypeId, data, user) {
+    return adminRoomTypeService.updateRoomType(roomTypeId, data, user);
+  }
+
+  async deleteRoomType(roomTypeId, user) {
+    return adminRoomTypeService.deleteRoomType(roomTypeId, user);
   }
 
   async updateRoomTypePrice(roomTypeId, data, user) {

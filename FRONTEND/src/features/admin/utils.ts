@@ -25,16 +25,25 @@ export const formatDate = (value?: string | null) => {
   }).format(new Date(value));
 };
 
-export const formatCurrency = (value?: number | null, currency = "VND") => {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+export const formatCurrency = (
+  value?: number | string | null,
+  currency?: string | null,
+) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "--";
+  }
+
+  const safeCurrency =
+    typeof currency === "string" && /^[A-Z]{3}$/.test(currency)
+      ? currency
+      : "VND";
 
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
-    currency,
+    currency: safeCurrency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Number(value));
 };
-
 export const getErrorMessage = (
   error: unknown,
   fallback = "Đã có lỗi xảy ra",

@@ -11,7 +11,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     entity_type: {
-      type: DataTypes.ENUM('hotel', 'room_type'),
+      type: DataTypes.ENUM('hotel', 'room_type', 'room'),
       allowNull: false
     },
     entity_id: {
