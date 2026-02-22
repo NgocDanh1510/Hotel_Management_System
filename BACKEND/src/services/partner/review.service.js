@@ -6,6 +6,7 @@ class PartnerReviewService {
     const {
       is_published,
       hotel_id,
+      hotelId,
       user_id,
       rating_overall_min,
       rating_overall_max,
@@ -22,7 +23,7 @@ class PartnerReviewService {
 
     const where = {};
     if (is_published !== undefined) where.is_published = is_published;
-    if (hotel_id) where.hotel_id = hotel_id;
+    if (hotel_id || hotelId) where.hotel_id = hotel_id || hotelId;
     if (user_id) where.user_id = user_id;
 
     if (rating_overall_min !== undefined || rating_overall_max !== undefined) {

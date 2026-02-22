@@ -86,6 +86,9 @@ class PaymentService {
       type,
       gateway,
       booking_id,
+      bookingId,
+      hotel_id,
+      hotelId,
       paid_at_from,
       paid_at_to,
       amount_min,
@@ -101,6 +104,7 @@ class PaymentService {
 
     const where = {};
     const hotelWhere = {};
+    const bookingWhere = {};
 
     const userPermissions = user.permissions || [];
     const canReadAll = userPermissions.includes("payment.read_all");
@@ -116,7 +120,8 @@ class PaymentService {
     if (status) where.status = status;
     if (type) where.type = type;
     if (gateway) where.gateway = gateway;
-    if (booking_id) where.booking_id = booking_id;
+    if (booking_id || bookingId) where.booking_id = booking_id || bookingId;
+    if (hotel_id || hotelId) bookingWhere.hotel_id = hotel_id || hotelId;
 
     if (paid_at_from || paid_at_to) {
       where.paid_at = {};
@@ -133,6 +138,7 @@ class PaymentService {
     const bookingInclude = {
       model: Booking,
       attributes: ["id", "hotel_id", "user_id"],
+      where: bookingWhere,
       include: [
         {
           model: Hotel,
@@ -145,6 +151,8 @@ class PaymentService {
       bookingInclude.required = true;
       bookingInclude.include[0].where = hotelWhere;
       bookingInclude.include[0].required = true;
+    } else if (Object.keys(bookingWhere).length > 0) {
+      bookingInclude.required = true;
     }
 
     const include = [

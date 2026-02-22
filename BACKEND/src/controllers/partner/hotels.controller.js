@@ -1,6 +1,7 @@
 const partnerHotelService = require("../../services/partner/hotels.service");
 const imageService = require("../../services/image.service");
 const { sendSuccess, sendError } = require("../../utils/apiResponse");
+const { toPartnerScopedUser } = require("../../utils/partnerScope");
 
 const createHotel = async (req, res, next) => {
   try {
@@ -83,7 +84,7 @@ const getHotelImages = async (req, res, next) => {
   try {
     const images = await imageService.getHotelImages(
       req.params.hotelId,
-      req.user,
+      toPartnerScopedUser(req.user),
     );
 
     return sendSuccess(res, {
@@ -108,7 +109,7 @@ const addHotelImage = async (req, res, next) => {
       req.params.hotelId,
       req.file,
       req.body,
-      req.user,
+      toPartnerScopedUser(req.user),
     );
 
     return sendSuccess(res, {
@@ -133,7 +134,7 @@ const deleteHotelImage = async (req, res, next) => {
     await imageService.deleteHotelImage(
       req.params.hotelId,
       req.params.imageId,
-      req.user,
+      toPartnerScopedUser(req.user),
     );
 
     return sendSuccess(res, {

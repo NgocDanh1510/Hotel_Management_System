@@ -1,25 +1,44 @@
 const { RoomType, Hotel } = require("../../models");
 const adminRoomTypeService = require("../admin/roomType.service");
+const { toPartnerScopedUser } = require("../../utils/partnerScope");
 
 class PartnerRoomTypeService {
   async listRoomTypesByQuery(query, user) {
-    return adminRoomTypeService.listRoomTypesByQuery(query, user);
+    return adminRoomTypeService.listRoomTypesByQuery(
+      query,
+      toPartnerScopedUser(user),
+    );
   }
 
   async listRoomTypes(hotelId, query, user) {
-    return adminRoomTypeService.listRoomTypes(hotelId, query, user);
+    return adminRoomTypeService.listRoomTypes(
+      hotelId,
+      query,
+      toPartnerScopedUser(user),
+    );
   }
 
   async createRoomType(hotelId, data, user) {
-    return adminRoomTypeService.createRoomType(hotelId, data, user);
+    return adminRoomTypeService.createRoomType(
+      hotelId,
+      data,
+      toPartnerScopedUser(user),
+    );
   }
 
   async updateRoomType(roomTypeId, data, user) {
-    return adminRoomTypeService.updateRoomType(roomTypeId, data, user);
+    return adminRoomTypeService.updateRoomType(
+      roomTypeId,
+      data,
+      toPartnerScopedUser(user),
+    );
   }
 
   async deleteRoomType(roomTypeId, user) {
-    return adminRoomTypeService.deleteRoomType(roomTypeId, user);
+    return adminRoomTypeService.deleteRoomType(
+      roomTypeId,
+      toPartnerScopedUser(user),
+    );
   }
 
   async updateRoomTypePrice(roomTypeId, data, user) {

@@ -38,13 +38,19 @@ type HotelFilters = OffsetFilters & {
 type BookingFilters = OffsetFilters & {
   status?: string;
   hotel_id?: string;
+  hotelId?: string;
   room_id?: string;
+  room_type_id?: string;
+  roomTypeId?: string;
+  booking_id?: string;
+  bookingId?: string;
   user_id?: string;
 };
 
 type ReviewFilters = OffsetFilters & {
   is_published?: boolean;
   hotel_id?: string;
+  hotelId?: string;
   user_id?: string;
   rating_overall_min?: number;
   rating_overall_max?: number;
@@ -55,6 +61,9 @@ type PaymentFilters = OffsetFilters & {
   type?: string;
   gateway?: string;
   booking_id?: string;
+  bookingId?: string;
+  hotel_id?: string;
+  hotelId?: string;
 };
 
 type RoomFilters = OffsetFilters & {

@@ -19,6 +19,7 @@ const listHotelReviewsQuerySchema = Joi.object({
 const listAdminReviewsQuerySchema = Joi.object({
   is_published: Joi.boolean().optional(),
   hotel_id: Joi.string().guid().optional(),
+  hotelId: Joi.string().guid().optional(),
   user_id: Joi.string().guid().optional(),
   rating_overall_min: Joi.number().integer().min(1).max(5).optional(),
   rating_overall_max: Joi.number().integer().min(1).max(5).optional(),

@@ -57,7 +57,12 @@ const listAdminBookingsQuerySchema = Joi.object({
     )
     .optional(),
   hotel_id: Joi.string().guid().optional(),
+  hotelId: Joi.string().guid().optional(),
   room_id: Joi.string().guid().optional(),
+  room_type_id: Joi.string().guid().optional(),
+  roomTypeId: Joi.string().guid().optional(),
+  booking_id: Joi.string().guid().optional(),
+  bookingId: Joi.string().guid().optional(),
   user_id: Joi.string().guid().optional(),
   check_in_from: Joi.date().iso().optional(),
   check_in_to: Joi.date().iso().optional(),

@@ -515,8 +515,13 @@ class BookingService {
   async listAllBookings(query, user = {}) {
     const {
       status,
+      booking_id,
+      bookingId,
       hotel_id,
+      hotelId,
       room_id,
+      room_type_id,
+      roomTypeId,
       user_id,
       check_in_from,
       check_in_to,
@@ -539,6 +544,9 @@ class BookingService {
 
     const where = {};
     const hotelWhere = {};
+    const selectedBookingId = booking_id || bookingId;
+    const selectedHotelId = hotel_id || hotelId;
+    const selectedRoomTypeId = room_type_id || roomTypeId;
 
     const userPermissions = user.permissions || [];
     const canReadAll = userPermissions.includes("booking.read_all");
@@ -558,8 +566,10 @@ class BookingService {
       where.status = { [Op.in]: statuses };
     }
 
-    if (hotel_id) where.hotel_id = hotel_id;
+    if (selectedBookingId) where.id = selectedBookingId;
+    if (selectedHotelId) where.hotel_id = selectedHotelId;
     if (room_id) where.room_id = room_id;
+    if (selectedRoomTypeId) where.room_type_id = selectedRoomTypeId;
     if (user_id) where.user_id = user_id;
 
     if (district_id) {

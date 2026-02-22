@@ -1,6 +1,7 @@
 const partnerRoomTypeService = require("../../services/partner/roomType.service");
 const imageService = require("../../services/image.service");
 const { sendSuccess, sendError } = require("../../utils/apiResponse");
+const { toPartnerScopedUser } = require("../../utils/partnerScope");
 
 class PartnerRoomTypeController {
   async listAllRoomTypes(req, res) {
@@ -130,7 +131,7 @@ class PartnerRoomTypeController {
     try {
       const images = await imageService.getRoomTypeImages(
         req.params.roomTypeId,
-        req.user,
+        toPartnerScopedUser(req.user),
       );
 
       return sendSuccess(res, {
@@ -152,7 +153,7 @@ class PartnerRoomTypeController {
         req.params.roomTypeId,
         req.file,
         req.body,
-        req.user,
+        toPartnerScopedUser(req.user),
       );
 
       return sendSuccess(res, {
@@ -174,7 +175,7 @@ class PartnerRoomTypeController {
       await imageService.deleteRoomTypeImage(
         req.params.roomTypeId,
         req.params.imageId,
-        req.user,
+        toPartnerScopedUser(req.user),
       );
 
       return sendSuccess(res, {
