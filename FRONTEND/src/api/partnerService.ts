@@ -16,6 +16,12 @@ import type {
   PartnerRoomListItem,
   PartnerRoomTypeListItem,
 } from "@/types/partner";
+import type {
+  CreateWithdrawalPayload,
+  PartnerWalletOverview,
+  PartnerWalletTransaction,
+  WithdrawalRequest,
+} from "@/types/wallet";
 
 type OffsetFilters = {
   q?: string;
@@ -64,6 +70,10 @@ type PaymentFilters = OffsetFilters & {
   bookingId?: string;
   hotel_id?: string;
   hotelId?: string;
+};
+
+type WithdrawalFilters = OffsetFilters & {
+  status?: string;
 };
 
 type RoomFilters = OffsetFilters & {
@@ -442,6 +452,35 @@ export const partnerService = {
     const response = await axiosInstance.get<
       PaginatedResponse<PartnerPaymentListItem[]>
     >("/partner/payments", { params });
+    return response.data;
+  },
+
+  getWallet: async () => {
+    const response = await axiosInstance.get<ApiResponse<PartnerWalletOverview>>(
+      "/partner/wallet",
+    );
+    return response.data;
+  },
+
+  getWalletTransactions: async (params?: OffsetFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<PartnerWalletTransaction[]>
+    >("/partner/wallet/transactions", { params });
+    return response.data;
+  },
+
+  getWithdrawals: async (params?: WithdrawalFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<WithdrawalRequest[]>
+    >("/partner/withdrawals", { params });
+    return response.data;
+  },
+
+  createWithdrawal: async (payload: CreateWithdrawalPayload) => {
+    const response = await axiosInstance.post<ApiResponse<WithdrawalRequest>>(
+      "/partner/withdrawals",
+      payload,
+    );
     return response.data;
   },
 

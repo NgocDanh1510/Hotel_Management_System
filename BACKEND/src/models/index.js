@@ -19,6 +19,9 @@ const Review = require("./review.model")(sequelize);
 const Image = require("./image.model")(sequelize);
 const District = require("./district.model")(sequelize);
 const City = require("./city.model")(sequelize);
+const PartnerWallet = require("./partnerWallet.model")(sequelize);
+const PartnerWalletTransaction = require("./partnerWalletTransaction.model")(sequelize);
+const WithdrawalRequest = require("./withdrawalRequest.model")(sequelize);
 // === ASSOCIATIONS ===
 
 // User
@@ -31,6 +34,8 @@ User.belongsToMany(Role, {
 User.hasMany(RefreshToken, { foreignKey: "user_id" });
 User.hasMany(Booking, { foreignKey: "user_id" });
 User.hasMany(Review, { foreignKey: "user_id" });
+User.hasOne(PartnerWallet, { as: "partnerWallet", foreignKey: "partner_id" });
+User.hasMany(WithdrawalRequest, { as: "withdrawalRequests", foreignKey: "partner_id" });
 
 // Role
 Role.belongsToMany(Permission, {
@@ -109,6 +114,22 @@ Booking.hasOne(Review, { foreignKey: "booking_id" });
 Payment.belongsTo(Booking, { foreignKey: "booking_id" });
 Payment.belongsTo(User, { foreignKey: "user_id" });
 
+// Partner wallet
+PartnerWallet.belongsTo(User, { as: "partner", foreignKey: "partner_id" });
+PartnerWallet.hasMany(PartnerWalletTransaction, { foreignKey: "wallet_id" });
+PartnerWallet.hasMany(WithdrawalRequest, { foreignKey: "wallet_id" });
+
+PartnerWalletTransaction.belongsTo(PartnerWallet, { foreignKey: "wallet_id" });
+PartnerWalletTransaction.belongsTo(User, { as: "partner", foreignKey: "partner_id" });
+PartnerWalletTransaction.belongsTo(Booking, { foreignKey: "booking_id" });
+PartnerWalletTransaction.belongsTo(Payment, { foreignKey: "payment_id" });
+PartnerWalletTransaction.belongsTo(WithdrawalRequest, { foreignKey: "withdrawal_request_id" });
+
+WithdrawalRequest.belongsTo(PartnerWallet, { foreignKey: "wallet_id" });
+WithdrawalRequest.belongsTo(User, { as: "partner", foreignKey: "partner_id" });
+WithdrawalRequest.belongsTo(User, { as: "admin", foreignKey: "admin_id" });
+WithdrawalRequest.hasMany(PartnerWalletTransaction, { foreignKey: "withdrawal_request_id" });
+
 // Review
 Review.belongsTo(Booking, { foreignKey: "booking_id" });
 Review.belongsTo(User, { foreignKey: "user_id" });
@@ -149,4 +170,7 @@ module.exports = {
   Image,
   District,
   City,
+  PartnerWallet,
+  PartnerWalletTransaction,
+  WithdrawalRequest,
 };

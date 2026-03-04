@@ -144,7 +144,7 @@ export interface AdminPaymentListItem {
   booking_id: string;
   user_id: string;
   amount: number;
-  gateway: "vnpay" | "momo" | "stripe";
+  gateway: "vnpay" | "momo" | "stripe" | "payos";
   status: "pending" | "success" | "failed" | "refunded";
   type: "deposit" | "full_payment" | "refund";
   transaction_id?: string | null;

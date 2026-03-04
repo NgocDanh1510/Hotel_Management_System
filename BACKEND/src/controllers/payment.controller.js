@@ -53,6 +53,31 @@ const getPaymentDetail = async (req, res, next) => {
 };
 
 /**
+ * GET /api/v1/payments/:id/status
+ * Get payment status for frontend polling.
+ */
+const getPaymentStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const status = await paymentService.getPaymentStatus(id, req.user);
+
+    return sendSuccess(res, {
+      message: "Payment status retrieved successfully",
+      data: status,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("Get payment status error:", error);
+    next(error);
+  }
+};
+
+/**
  * POST /api/v1/payments/:id/mock-complete
  * Complete a pending payment in demo mode.
  */
@@ -82,5 +107,6 @@ const mockCompletePayment = async (req, res, next) => {
 module.exports = {
   createPayment,
   getPaymentDetail,
+  getPaymentStatus,
   mockCompletePayment,
 };

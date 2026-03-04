@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 import bookingService from "@/api/bookingService";
 import paymentService from "@/api/paymentService";
 import reviewService from "@/api/reviewService";
@@ -10,7 +11,7 @@ import {
   StatusBadge,
 } from "@/components/client/ClientPrimitives";
 import type { BookingDetail, BookingInvoice } from "@/types/booking";
-import type { PaymentGateway } from "@/types/payment";
+import type { PaymentResponse } from "@/types/payment";
 import type { CreateReviewRequest, UserReview } from "@/types/review";
 import {
   formatCurrency,
@@ -24,7 +25,10 @@ const BookingDetailPage = () => {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [invoice, setInvoice] = useState<BookingInvoice | null>(null);
   const [myReview, setMyReview] = useState<UserReview | null>(null);
-  const [gateway, setGateway] = useState<PaymentGateway>("vnpay");
+  const [paymentSession, setPaymentSession] = useState<PaymentResponse | null>(
+    null,
+  );
+  const [paymentStatusText, setPaymentStatusText] = useState("");
   const [reviewForm, setReviewForm] = useState<CreateReviewRequest>({
     booking_id: id,
     rating_overall: 5,
@@ -65,6 +69,61 @@ const BookingDetailPage = () => {
     void fetchBooking();
   }, [id]);
 
+  useEffect(() => {
+    if (!paymentSession || paymentSession.status !== "pending") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const pollStatus = async () => {
+      try {
+        const statusResponse = await paymentService.getPaymentStatus(
+          paymentSession.payment_id,
+        );
+
+        if (cancelled) return;
+
+        const paymentStatus = statusResponse.data.payment_status;
+        setPaymentStatusText(paymentStatus);
+
+        if (paymentStatus === "success") {
+          setPaymentSession((current) =>
+            current ? { ...current, status: "success" } : current,
+          );
+          const bookingResponse = await bookingService.getBookingDetail(id);
+          if (!cancelled) {
+            setBooking(bookingResponse.data);
+            setMessage("Thanh toán thành công. Booking đã được xác nhận.");
+          }
+        }
+
+        if (paymentStatus === "failed" || paymentStatus === "refunded") {
+          setPaymentSession((current) =>
+            current ? { ...current, status: paymentStatus } : current,
+          );
+        }
+      } catch (pollError) {
+        if (!cancelled) {
+          setError(
+            getApiErrorMessage(
+              pollError,
+              "Không kiểm tra được trạng thái thanh toán.",
+            ),
+          );
+        }
+      }
+    };
+
+    void pollStatus();
+    const intervalId = window.setInterval(() => void pollStatus(), 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [id, paymentSession]);
+
   const refreshBooking = async () => {
     const bookingResponse = await bookingService.getBookingDetail(id);
     setBooking(bookingResponse.data);
@@ -94,15 +153,12 @@ const BookingDetailPage = () => {
 
       const paymentResponse = await paymentService.createPayment({
         booking_id: booking.id,
-        amount: booking.total_price,
-        gateway,
+        gateway: "payos",
       });
 
-      await paymentService.mockCompletePayment(paymentResponse.data.payment_id);
-      await refreshBooking();
-      setMessage(
-        `Đã hoàn tất thanh toán demo qua ${gateway.toUpperCase()}. Booking đã được chuyển sang confirmed.`,
-      );
+      setPaymentSession(paymentResponse.data);
+      setPaymentStatusText(paymentResponse.data.status);
+      setMessage("Đã tạo mã QR PayOS. Vui lòng quét mã để thanh toán.");
     } catch (actionError) {
       setError(
         getApiErrorMessage(actionError, "Không hoàn tất được thanh toán."),
@@ -164,7 +220,7 @@ const BookingDetailPage = () => {
       <ClientSection
         eyebrow="Booking Detail"
         title={`Booking tại ${booking.hotel.name}`}
-        description="Trang này gom chi tiết booking, thanh toán demo, invoice và review sau lưu trú vào cùng một chỗ."
+        description="Trang này gom chi tiết booking, thanh toán PayOS, invoice và review sau lưu trú vào cùng một chỗ."
       >
         {message ? <ClientMessage tone="success" message={message} /> : null}
         {error ? <ClientMessage tone="error" message={error} /> : null}
@@ -439,22 +495,6 @@ const BookingDetailPage = () => {
 
               {canPay ? (
                 <>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">
-                      Cổng thanh toán demo
-                    </span>
-                    <select
-                      value={gateway}
-                      onChange={(event) =>
-                        setGateway(event.target.value as PaymentGateway)
-                      }
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
-                    >
-                      <option value="vnpay">VNPAY</option>
-                      <option value="momo">MoMo</option>
-                      <option value="stripe">Stripe</option>
-                    </select>
-                  </label>
                   <button
                     type="button"
                     onClick={() => void handlePayNow()}
@@ -463,6 +503,41 @@ const BookingDetailPage = () => {
                   >
                     Thanh toán {formatCurrency(booking.total_price)}
                   </button>
+                  {paymentSession ? (
+                    <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          PayOS QR
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Trạng thái: {paymentStatusText || paymentSession.status}
+                        </p>
+                      </div>
+                      {paymentSession.qr_code ? (
+                        <div className="flex justify-center rounded-2xl bg-white p-4">
+                          <QRCodeCanvas
+                            value={paymentSession.qr_code}
+                            size={220}
+                            includeMargin
+                          />
+                        </div>
+                      ) : null}
+                      {paymentSession.checkout_url ? (
+                        <a
+                          href={paymentSession.checkout_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex w-full justify-center rounded-full border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-white"
+                        >
+                          Mở trang PayOS
+                        </a>
+                      ) : null}
+                      <p className="text-xs leading-5 text-slate-500">
+                        Trang này sẽ tự kiểm tra trạng thái mỗi 3 giây sau khi
+                        PayOS gửi webhook thành công.
+                      </p>
+                    </div>
+                  ) : null}
                 </>
               ) : null}
 

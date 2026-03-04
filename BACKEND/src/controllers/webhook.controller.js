@@ -34,6 +34,32 @@ const handlePaymentWebhook = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/webhooks/payos
+ * Handle PayOS payment webhook.
+ */
+const handlePayOSWebhook = async (req, res, next) => {
+  try {
+    const result = await webhookService.handlePayOSWebhook(req.body);
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: result.message,
+      status: result.status,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+    console.error("PayOS webhook error:", error);
+    next(error);
+  }
+};
+
 module.exports = {
   handlePaymentWebhook,
+  handlePayOSWebhook,
 };

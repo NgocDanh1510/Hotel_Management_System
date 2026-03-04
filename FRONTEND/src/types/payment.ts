@@ -1,4 +1,4 @@
-export type PaymentGateway = "vnpay" | "momo" | "stripe";
+export type PaymentGateway = "vnpay" | "momo" | "stripe" | "payos";
 
 export type PaymentStatus = "pending" | "success" | "failed" | "refunded";
 
@@ -19,14 +19,33 @@ export interface Payment {
 
 export interface CreatePaymentRequest {
   booking_id: string;
-  amount: number;
-  gateway: PaymentGateway;
+  amount?: number;
+  gateway?: PaymentGateway;
 }
 
 export interface PaymentResponse {
   payment_id: string;
-  payment_url: string;
+  status: PaymentStatus;
+  amount: number;
+  order_code?: number | null;
+  checkout_url?: string | null;
+  qr_code?: string | null;
+  payment_url?: string;
+  expires_at?: string | null;
   expires_in: number;
+}
+
+export interface PaymentStatusResponse {
+  payment_id: string;
+  booking_id: string;
+  payment_status: PaymentStatus;
+  booking_status: string | null;
+  gateway: PaymentGateway;
+  amount: number;
+  transaction_id?: string | null;
+  paid_at?: string | null;
+  expires_at?: string | null;
+  order_code?: number | null;
 }
 
 export interface UserPayment extends Payment {

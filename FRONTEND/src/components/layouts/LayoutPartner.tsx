@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   Star,
+  Wallet,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,6 +77,12 @@ const navItems = [
     description: "Giao dịch và doanh thu",
     path: "/partner/payments",
     icon: CreditCard,
+  },
+  {
+    label: "Wallet",
+    description: "Số dư và rút tiền",
+    path: "/partner/wallet",
+    icon: Wallet,
   },
 ];
 

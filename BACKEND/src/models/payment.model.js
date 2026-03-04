@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     gateway: {
-      type: DataTypes.ENUM('vnpay', 'momo', 'stripe'),
+      type: DataTypes.ENUM('vnpay', 'momo', 'stripe', 'payos'),
       allowNull: false
     },
     status: {
@@ -45,6 +45,28 @@ module.exports = (sequelize) => {
     },
     note: {
       type: DataTypes.TEXT,
+      allowNull: true
+    },
+    payos_order_code: {
+      type: DataTypes.BIGINT,
+      unique: true,
+      allowNull: true
+    },
+    payos_payment_link_id: {
+      type: DataTypes.STRING(255),
+      unique: true,
+      allowNull: true
+    },
+    payos_checkout_url: {
+      type: DataTypes.STRING(500),
+      allowNull: true
+    },
+    payos_qr_code: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    expires_at: {
+      type: DataTypes.DATE,
       allowNull: true
     }
   }, {

@@ -28,6 +28,17 @@ router.post(
  * @access Private
  */
 router.get(
+  "/:id/status",
+  authenticateToken,
+  requireAnyPermission([
+    "payment.read_own",
+    "payment.read_own_hotel",
+    "payment.read_all",
+  ]),
+  paymentController.getPaymentStatus
+);
+
+router.get(
   "/:id",
   authenticateToken,
   requireAnyPermission([

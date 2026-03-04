@@ -76,7 +76,7 @@ const HomePage = () => {
             </h1>
             <p className="max-w-xl text-sm leading-7 text-white/80 sm:text-base">
               Giao diện khách hàng mới bám trực tiếp trên backend hiện tại:
-              xem khách sạn, kiểm tra phòng trống, tạo booking, thanh toán demo
+              xem khách sạn, kiểm tra phòng trống, tạo booking, thanh toán PayOS
               và quản lý đánh giá ở cùng một nơi.
             </p>
             <div className="flex flex-wrap gap-3 text-sm text-white/80">

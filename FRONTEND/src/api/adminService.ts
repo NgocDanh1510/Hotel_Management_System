@@ -1,6 +1,10 @@
 import type { ApiResponse, PaginatedResponse } from "@/types/common";
 import type { AdminUserDetail, UsersListItem } from "@/types/user";
 import type {
+  ProcessWithdrawalPayload,
+  WithdrawalRequest,
+} from "@/types/wallet";
+import type {
   AdminAmenityOption,
   AdminBookingListItem,
   AdminHotelListItem,
@@ -76,6 +80,10 @@ type PaymentFilters = OffsetFilters & {
   type?: string;
   gateway?: string;
   booking_id?: string;
+};
+
+type WithdrawalFilters = OffsetFilters & {
+  status?: string;
 };
 
 type RoomFilters = OffsetFilters & {
@@ -343,6 +351,24 @@ export const adminService = {
   ) => {
     const response = await axiosInstance.post<ApiResponse<unknown>>(
       `/admin/payments/${id}/refund`,
+      data,
+    );
+    return response.data;
+  },
+
+  getWithdrawals: async (params?: WithdrawalFilters) => {
+    const response = await axiosInstance.get<
+      PaginatedResponse<WithdrawalRequest[]>
+    >("/admin/withdrawals", { params });
+    return response.data;
+  },
+
+  processWithdrawal: async (
+    id: string,
+    data: ProcessWithdrawalPayload,
+  ) => {
+    const response = await axiosInstance.patch<ApiResponse<WithdrawalRequest>>(
+      `/admin/withdrawals/${id}/status`,
       data,
     );
     return response.data;

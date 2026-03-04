@@ -9,4 +9,6 @@ const webhookController = require("../controllers/webhook.controller");
  */
 router.post("/payment/:gateway", webhookController.handlePaymentWebhook);
 
+router.post("/payos", webhookController.handlePayOSWebhook);
+
 module.exports = router;

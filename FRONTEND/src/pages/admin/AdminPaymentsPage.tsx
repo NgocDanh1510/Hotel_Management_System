@@ -197,6 +197,7 @@ const AdminPaymentsPage = () => {
           }
         >
           <option value="">Tất cả gateway</option>
+          <option value="payos">payos</option>
           <option value="vnpay">vnpay</option>
           <option value="momo">momo</option>
           <option value="stripe">stripe</option>

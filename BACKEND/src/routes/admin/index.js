@@ -12,6 +12,7 @@ const adminReviewsRoutes = require("./review.routes");
 const adminImagesRoutes = require("./image.routes");
 const adminAmenitiesRoutes = require("./amenity.routes");
 const adminPaymentsRoutes = require("./payment.routes");
+const adminWithdrawalRoutes = require("./withdrawal.routes");
 
 // Admin routes
 router.use("/users", adminUsersRoutes);
@@ -25,5 +26,6 @@ router.use("/reviews", adminReviewsRoutes);
 router.use("/images", adminImagesRoutes);
 router.use("/amenities", adminAmenitiesRoutes);
 router.use("/payments", adminPaymentsRoutes);
+router.use("/withdrawals", adminWithdrawalRoutes);
 
 module.exports = router;

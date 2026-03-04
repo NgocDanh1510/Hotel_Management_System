@@ -1,5 +1,7 @@
 const { Payment, Booking, Hotel, User, sequelize } = require("../models");
 const { Op } = require("sequelize");
+const { getFrontendUrl, getPayOSClient } = require("../config/payos");
+const walletService = require("./wallet.service");
 
 class PaymentService {
   /**
@@ -10,9 +12,11 @@ class PaymentService {
    * @returns {Promise<Object>} Payment simulation info
    */
   async createPayment(data, userId) {
-    const { booking_id, amount, gateway } = data;
+    const { booking_id, gateway = "payos" } = data;
 
-    const booking = await Booking.findByPk(booking_id);
+    const booking = await Booking.findByPk(booking_id, {
+      include: [{ model: Hotel, attributes: ["id", "name", "owner_id"] }],
+    });
 
     // 1. Validation
     if (!booking) {
@@ -33,11 +37,7 @@ class PaymentService {
       throw error;
     }
 
-    if (parseFloat(booking.total_price) !== parseFloat(amount)) {
-      const error = new Error(`Payment amount (${amount}) does not match booking total price (${booking.total_price})`);
-      error.statusCode = 400;
-      throw error;
-    }
+    const amount = parseFloat(booking.total_price);
 
     // 2. Check for existing successful payment
     const successPayment = await Payment.findOne({
@@ -51,6 +51,10 @@ class PaymentService {
       const error = new Error("This booking has already been paid successfully");
       error.statusCode = 409;
       throw error;
+    }
+
+    if (gateway === "payos") {
+      return this._createPayOSPayment(booking, userId, amount);
     }
 
     // 3. Create pending payment record
@@ -69,8 +73,110 @@ class PaymentService {
 
     return {
       payment_id: payment.id,
+      status: payment.status,
+      amount: parseFloat(payment.amount),
       payment_url: paymentUrl,
       expires_in: 900, // 15 minutes
+    };
+  }
+
+  async _createPayOSPayment(booking, userId, amount) {
+    const now = new Date();
+    const existingPayment = await Payment.findOne({
+      where: {
+        booking_id: booking.id,
+        gateway: "payos",
+        status: "pending",
+        expires_at: { [Op.gt]: now },
+      },
+      order: [["created_at", "DESC"]],
+    });
+
+    if (
+      existingPayment?.payos_qr_code &&
+      existingPayment?.payos_checkout_url
+    ) {
+      return this._formatPayOSPaymentResponse(existingPayment);
+    }
+
+    const payos = getPayOSClient();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const orderCode = await this._generatePayOSOrderCode();
+    const frontendUrl = getFrontendUrl();
+    const amountInt = Math.round(amount);
+
+    const paymentLink = await payos.paymentRequests.create({
+      orderCode,
+      amount: amountInt,
+      description: `BOOKING ${booking.id.slice(0, 8)}`,
+      items: [
+        {
+          name: booking.Hotel?.name || "Hotel booking",
+          quantity: 1,
+          price: amountInt,
+        },
+      ],
+      returnUrl: `${frontendUrl}/bookings/${booking.id}?payment=success`,
+      cancelUrl: `${frontendUrl}/bookings/${booking.id}?payment=cancel`,
+      expiredAt: Math.floor(expiresAt.getTime() / 1000),
+    });
+
+    const payosData = paymentLink?.data || paymentLink;
+    const payment = await Payment.create({
+      booking_id: booking.id,
+      user_id: userId,
+      amount,
+      gateway: "payos",
+      status: "pending",
+      type: "full_payment",
+      payos_order_code: orderCode,
+      payos_payment_link_id: payosData.paymentLinkId || payosData.id || null,
+      payos_checkout_url: payosData.checkoutUrl || null,
+      payos_qr_code: payosData.qrCode || null,
+      expires_at: expiresAt,
+      note: "PayOS payment link created",
+    });
+
+    return this._formatPayOSPaymentResponse(payment);
+  }
+
+  async _generatePayOSOrderCode() {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const randomPart = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, "0");
+      const orderCode = Number(`${Date.now()}${randomPart}`);
+      const existing = await Payment.findOne({
+        where: { payos_order_code: orderCode },
+      });
+
+      if (!existing) {
+        return orderCode;
+      }
+    }
+
+    const error = new Error("Could not generate unique PayOS order code");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  _formatPayOSPaymentResponse(payment) {
+    const expiresAt = payment.expires_at ? new Date(payment.expires_at) : null;
+    const expiresIn = expiresAt
+      ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000))
+      : 0;
+
+    return {
+      payment_id: payment.id,
+      status: payment.status,
+      amount: parseFloat(payment.amount),
+      order_code: payment.payos_order_code
+        ? Number(payment.payos_order_code)
+        : null,
+      checkout_url: payment.payos_checkout_url,
+      qr_code: payment.payos_qr_code,
+      expires_at: payment.expires_at,
+      expires_in: expiresIn,
     };
   }
 
@@ -280,6 +386,10 @@ class PaymentService {
         }
       }
 
+      if (refund.status === "success") {
+        await walletService.reversePartnerEarningsForRefund(refund, transaction);
+      }
+
       await transaction.commit();
       return refund;
     } catch (error) {
@@ -330,6 +440,57 @@ class PaymentService {
     }
 
     return payment;
+  }
+
+  async getPaymentStatus(paymentId, user) {
+    const payment = await Payment.findByPk(paymentId, {
+      include: [
+        {
+          model: Booking,
+          attributes: ["id", "status", "user_id", "hotel_id"],
+          include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+        },
+      ],
+    });
+
+    if (!payment) {
+      const error = new Error("Payment not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const perms = user.permissions || [];
+    const canReadAll = perms.includes("payment.read_all");
+    const canReadOwnHotel = perms.includes("payment.read_own_hotel");
+    const isPaymentOwner = payment.user_id === user.user_id;
+    const isBookingOwner = payment.Booking?.user_id === user.user_id;
+    const isHotelOwner = payment.Booking?.Hotel?.owner_id === user.user_id;
+
+    if (
+      !canReadAll &&
+      !isPaymentOwner &&
+      !isBookingOwner &&
+      !(canReadOwnHotel && isHotelOwner)
+    ) {
+      const error = new Error("You do not have permission to view this payment");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return {
+      payment_id: payment.id,
+      booking_id: payment.booking_id,
+      payment_status: payment.status,
+      booking_status: payment.Booking?.status || null,
+      gateway: payment.gateway,
+      amount: parseFloat(payment.amount),
+      transaction_id: payment.transaction_id,
+      paid_at: payment.paid_at,
+      expires_at: payment.expires_at,
+      order_code: payment.payos_order_code
+        ? Number(payment.payos_order_code)
+        : null,
+    };
   }
 
   /**

@@ -3,6 +3,7 @@ import type {
   CreatePaymentRequest,
   Payment,
   PaymentResponse,
+  PaymentStatusResponse,
   UserPayment,
 } from "@/types/payment";
 import type { ApiResponse } from "@/types/common";
@@ -19,6 +20,13 @@ const paymentService = {
   getPaymentDetail: async (id: string) => {
     const response = await axiosInstance.get<ApiResponse<Payment>>(
       `/payments/${id}`,
+    );
+    return response.data;
+  },
+
+  getPaymentStatus: async (id: string) => {
+    const response = await axiosInstance.get<ApiResponse<PaymentStatusResponse>>(
+      `/payments/${id}/status`,
     );
     return response.data;
   },

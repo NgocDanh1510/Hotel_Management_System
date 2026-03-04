@@ -1,4 +1,7 @@
-const { Payment, Booking, sequelize } = require("../models");
+const { Payment, Booking, Hotel, sequelize } = require("../models");
+const { Op } = require("sequelize");
+const { getPayOSClient } = require("../config/payos");
+const walletService = require("./wallet.service");
 
 class WebhookService {
   /**
@@ -24,9 +27,10 @@ class WebhookService {
 
     const payment = await Payment.findByPk(payment_id);
     if (!payment) {
-      const error = new Error("Payment not found");
-      error.statusCode = 404;
-      throw error;
+      return {
+        message: "PayOS payment not found; webhook ignored",
+        status: "ignored",
+      };
     }
 
     // If payment already marked as success/failed, skip
@@ -68,6 +72,148 @@ class WebhookService {
       console.error("[Webhook Error]", error);
       throw error;
     }
+  }
+
+  async handlePayOSWebhook(body) {
+    const payos = getPayOSClient();
+    const verifiedPayload = await payos.webhooks.verify(body);
+    const webhookData = verifiedPayload?.data || verifiedPayload;
+    const webhookSuccess =
+      body.success ?? verifiedPayload?.success ?? webhookData?.code === "00";
+
+    if (!webhookSuccess || webhookData.code !== "00") {
+      return {
+        message: "PayOS webhook ignored",
+        status: "ignored",
+      };
+    }
+
+    const orderCode = webhookData.orderCode;
+    const paymentLinkId = webhookData.paymentLinkId;
+    const lookupConditions = [];
+
+    if (orderCode !== undefined && orderCode !== null) {
+      lookupConditions.push({ payos_order_code: orderCode });
+    }
+
+    if (paymentLinkId) {
+      lookupConditions.push({ payos_payment_link_id: paymentLinkId });
+    }
+
+    if (lookupConditions.length === 0) {
+      return {
+        message: "PayOS webhook missing payment identifiers; ignored",
+        status: "ignored",
+      };
+    }
+
+    const payment = await Payment.findOne({
+      where: {
+        gateway: "payos",
+        [Op.or]: lookupConditions,
+      },
+      include: [
+        {
+          model: Booking,
+          include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+        },
+      ],
+    });
+
+    if (!payment) {
+      const error = new Error("Payment not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (payment.status !== "pending") {
+      return {
+        message: "PayOS payment already processed",
+        status: payment.status,
+      };
+    }
+
+    const expectedAmount = Math.round(parseFloat(payment.amount));
+    const paidAmount = Number(webhookData.amount);
+
+    if (expectedAmount !== paidAmount) {
+      const error = new Error("PayOS amount does not match payment amount");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+      const lockedPayment = await Payment.findByPk(payment.id, {
+        include: [
+          {
+            model: Booking,
+            include: [{ model: Hotel, attributes: ["id", "owner_id"] }],
+          },
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (lockedPayment.status !== "pending") {
+        await transaction.commit();
+        return {
+          message: "PayOS payment already processed",
+          status: lockedPayment.status,
+        };
+      }
+
+      const paidAt = this._parsePayOSDate(webhookData.transactionDateTime);
+
+      await lockedPayment.update(
+        {
+          status: "success",
+          transaction_id: webhookData.reference || paymentLinkId,
+          payos_payment_link_id:
+            lockedPayment.payos_payment_link_id || paymentLinkId,
+          paid_at: paidAt,
+          note: `Processed via PayOS webhook: ${webhookData.desc || "success"}`,
+        },
+        { transaction },
+      );
+
+      const booking = lockedPayment.Booking;
+      if (booking) {
+        if (booking.status === "pending") {
+          await booking.update({ status: "confirmed" }, { transaction });
+        }
+
+        if (
+          !["cancelled", "cancellation_pending", "no_show"].includes(
+            booking.status,
+          )
+        ) {
+          await walletService.creditPartnerPendingForPayment(
+            lockedPayment,
+            booking,
+            transaction,
+          );
+        }
+      }
+
+      await transaction.commit();
+      return {
+        message: "PayOS payment processed successfully",
+        status: "success",
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  _parsePayOSDate(value) {
+    if (!value) {
+      return new Date();
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   }
 }
 

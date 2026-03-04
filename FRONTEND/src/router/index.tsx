@@ -16,6 +16,7 @@ import AdminHotelsPage from "@/pages/admin/AdminHotelsPage";
 import AdminBookingsPage from "@/pages/admin/AdminBookingsPage";
 import AdminReviewsPage from "@/pages/admin/AdminReviewsPage";
 import AdminPaymentsPage from "@/pages/admin/AdminPaymentsPage";
+import AdminWithdrawalsPage from "@/pages/admin/AdminWithdrawalsPage";
 import AdminAmenitiesPage from "@/pages/admin/AdminAmenitiesPage";
 import AdminRoomTypesPage from "@/pages/admin/AdminRoomTypesPage";
 import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
@@ -31,6 +32,7 @@ import PartnerReviewsPage from "@/pages/partner/PartnerReviewsPage";
 // import PartnerImagesPage from "@/pages/partner/PartnerImagesPage";
 // import PartnerAmenitiesPage from "@/pages/partner/PartnerAmenitiesPage";
 import PartnerPaymentsPage from "@/pages/partner/PartnerPaymentsPage";
+import PartnerWalletPage from "@/pages/partner/PartnerWalletPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
 import PartnerRoute from "./PartnerRoute";
@@ -129,6 +131,10 @@ const router = createBrowserRouter([
         element: <AdminPaymentsPage />,
       },
       {
+        path: "withdrawals",
+        element: <AdminWithdrawalsPage />,
+      },
+      {
         path: "amenities",
         element: <AdminAmenitiesPage />,
       },
@@ -190,6 +196,10 @@ const router = createBrowserRouter([
       {
         path: "payments",
         element: <PartnerPaymentsPage />,
+      },
+      {
+        path: "wallet",
+        element: <PartnerWalletPage />,
       },
     ],
   },

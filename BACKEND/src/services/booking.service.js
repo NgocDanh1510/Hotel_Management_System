@@ -10,6 +10,7 @@ const {
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
+const walletService = require("./wallet.service");
 
 // ===== State machine for booking status transitions =====
 const ALLOWED_TRANSITIONS = {
@@ -802,46 +803,62 @@ class BookingService {
 
     // --- Edge: cancellation with payment → trigger refund ---
     let refundTriggered = false;
-    if (newStatus === "cancelled") {
-      const successPayments = (booking.Payments || []).filter(
-        (p) => p.status === "success",
-      );
+    const transaction = await sequelize.transaction();
 
-      if (successPayments.length > 0) {
-        // Override to cancellation_pending and create refund records
-        newStatus = "cancellation_pending";
-        refundTriggered = true;
-
-        await Promise.all(
-          successPayments.map(async (payment) => {
-            await Payment.create({
-              booking_id: bookingId,
-              user_id: booking.user_id,
-              amount: payment.amount,
-              gateway: payment.gateway,
-              status: "pending",
-              type: "refund",
-              note: `Refund for booking ${bookingId} status change`,
-            });
-          }),
+    try {
+      if (newStatus === "cancelled") {
+        const successPayments = (booking.Payments || []).filter(
+          (p) => p.status === "success",
         );
+
+        if (successPayments.length > 0) {
+          // Override to cancellation_pending and create refund records
+          newStatus = "cancellation_pending";
+          refundTriggered = true;
+
+          await Promise.all(
+            successPayments.map(async (payment) => {
+              await Payment.create(
+                {
+                  booking_id: bookingId,
+                  user_id: booking.user_id,
+                  amount: payment.amount,
+                  gateway: payment.gateway,
+                  status: "pending",
+                  type: "refund",
+                  note: `Refund for booking ${bookingId} status change`,
+                },
+                { transaction },
+              );
+            }),
+          );
+        }
       }
+
+      await booking.update({ status: newStatus }, { transaction });
+
+      if (newStatus === "checked_out") {
+        await walletService.releaseBookingEarnings(booking.id, transaction);
+      }
+
+      await transaction.commit();
+
+      return {
+        id: booking.id,
+        hotel_name: booking.Hotel?.name || null,
+        room_number: booking.Room?.room_number || null,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        total_price: parseFloat(booking.total_price),
+        previous_status: currentStatus,
+        status: newStatus,
+        refund_triggered: refundTriggered,
+        updated_at: booking.updated_at,
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-
-    await booking.update({ status: newStatus });
-
-    return {
-      id: booking.id,
-      hotel_name: booking.Hotel?.name || null,
-      room_number: booking.Room?.room_number || null,
-      check_in: booking.check_in,
-      check_out: booking.check_out,
-      total_price: parseFloat(booking.total_price),
-      previous_status: currentStatus,
-      status: newStatus,
-      refund_triggered: refundTriggered,
-      updated_at: booking.updated_at,
-    };
   }
 
   /**

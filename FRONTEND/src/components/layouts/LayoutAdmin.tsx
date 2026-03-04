@@ -14,6 +14,7 @@ import {
   Image,
   Star,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +28,7 @@ const navItems = [
   { label: "Bookings", path: "/admin/bookings", icon: CalendarCheck },
   { label: "Reviews", path: "/admin/reviews", icon: Star },
   { label: "Payments", path: "/admin/payments", icon: CreditCard },
+  { label: "Withdrawals", path: "/admin/withdrawals", icon: Wallet },
   { label: "Amenities", path: "/admin/amenities", icon: Blocks },
   { label: "Roles", path: "/admin/roles", icon: ShieldCheck },
   { label: "Permissions", path: "/admin/permissions", icon: KeyRound },
