@@ -85,6 +85,15 @@ const LayoutClient = () => {
               </Link>
             ) : null}
 
+            {hasRole("partner") ? (
+              <Link
+                to="/partner"
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+              >
+                Partner
+              </Link>
+            ) : null}
+
             {isAuthenticated ? (
               <>
                 <div className="rounded-full border border-white/70 bg-white px-4 py-2 text-sm shadow-sm">
@@ -151,14 +160,36 @@ const LayoutClient = () => {
 
             <div className="pt-2">
               {isAuthenticated ? (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
-                >
-                  <LogOut size={16} />
-                  Đăng xuất
-                </button>
+                <>
+                  {hasRole("admin") ? (
+                    <Link
+                      to="/admin"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 mb-2"
+                    >
+                      Admin
+                    </Link>
+                  ) : null}
+
+                  {hasRole("partner") ? (
+                    <Link
+                      to="/partner"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 mb-2"
+                    >
+                      Partner
+                    </Link>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+                  >
+                    <LogOut size={16} />
+                    Đăng xuất
+                  </button>
+                </>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <Link

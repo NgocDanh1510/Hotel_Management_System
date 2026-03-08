@@ -194,7 +194,10 @@ class ImageService {
       });
 
       if (existingImage) {
-        throw this._error("Image public_id already exists for this entity", 400);
+        throw this._error(
+          "Image public_id already exists for this entity",
+          400,
+        );
       }
 
       const isPrimary = this._parseBoolean(imageData.is_primary);
@@ -355,7 +358,11 @@ class ImageService {
       // Check if there's already a primary image
       const hasPrimary =
         (await Image.count({
-          where: { entity_type: entityType, entity_id: entityId, is_primary: true },
+          where: {
+            entity_type: entityType,
+            entity_id: entityId,
+            is_primary: true,
+          },
         })) > 0;
 
       for (let i = 0; i < successfulUploads.length; i++) {
@@ -389,14 +396,17 @@ class ImageService {
    * @returns {Promise<void>}
    */
   async reorderImages(imagesData, user) {
-    await this._assertCanManageImages(imagesData.map((item) => item.id), user);
+    await this._assertCanManageImages(
+      imagesData.map((item) => item.id),
+      user,
+    );
 
     const transaction = await sequelize.transaction();
     try {
       for (const item of imagesData) {
         await Image.update(
           { sort_order: item.sort_order },
-          { where: { id: item.id }, transaction }
+          { where: { id: item.id }, transaction },
         );
       }
       await transaction.commit();
@@ -415,7 +425,11 @@ class ImageService {
   async setPrimaryImage(imageId, user) {
     const targetImage = await Image.findByPk(imageId);
     if (!targetImage) throw this._error("Image not found", 404);
-    await this._assertCanManageEntity(targetImage.entity_type, targetImage.entity_id, user);
+    await this._assertCanManageEntity(
+      targetImage.entity_type,
+      targetImage.entity_id,
+      user,
+    );
 
     const transaction = await sequelize.transaction();
     try {
@@ -429,7 +443,7 @@ class ImageService {
             is_primary: true,
           },
           transaction,
-        }
+        },
       );
 
       // Set new primary
@@ -492,7 +506,8 @@ class ImageService {
     if (!user) return true;
     const perms = user.permissions || [];
     if (perms.includes("image.manage_all")) return true;
-    if (perms.includes("image.manage_own_hotel") && ownerId === user.user_id) return true;
+    if (perms.includes("image.manage_own_hotel") && ownerId === user.user_id)
+      return true;
     return false;
   }
 
@@ -500,7 +515,10 @@ class ImageService {
     const ownerId = await this._getEntityOwnerId(entityType, entityId);
 
     if (!this._hasPermission(user, ownerId)) {
-      throw this._error("You do not have permission to manage images for this entity", 403);
+      throw this._error(
+        "You do not have permission to manage images for this entity",
+        403,
+      );
     }
   }
 
@@ -583,6 +601,40 @@ class ImageService {
     return Number(value);
   }
 
+  async getAllImages(user, pagination = {}) {
+    const limit = Math.min(pagination.limit || 20, 100);
+    const offset = ((pagination.page || 1) - 1) * limit;
+
+    const images = await Image.findAll({
+      attributes: [
+        "id",
+        "entity_type",
+        "entity_id",
+        "url",
+        "public_id",
+        "sort_order",
+        "is_primary",
+        "created_at",
+        "updated_at",
+      ],
+      order: [["created_at", "DESC"]],
+      limit,
+      offset,
+    });
+
+    const total = await Image.count();
+
+    return {
+      data: images,
+      pagination: {
+        total,
+        page: pagination.page || 1,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   _uploadToCloudinary(file) {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -590,7 +642,7 @@ class ImageService {
         (error, result) => {
           if (error) reject(error);
           else resolve(result);
-        }
+        },
       );
       uploadStream.end(file.buffer);
     });

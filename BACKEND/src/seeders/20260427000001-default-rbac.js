@@ -6,61 +6,61 @@ const permissionCodes = [
   // Hotel lifecycle
   "hotel.read_public", // Xem khách sạn đã published — tất cả
   "hotel.read_all", // Xem cả hotel chưa duyệt / bị ẩn — owner + admin
-  "hotel.create", // Tạo mới khách sạn — hotel_owner
-  "hotel.manage_own", // Sửa thông tin hotel của mình — hotel_owner
+  "hotel.create", // Tạo mới khách sạn — partner
+  "hotel.manage_own", // Sửa thông tin hotel của mình — partner
   "hotel.manage_all", // Sửa bất kỳ hotel — admin
-  "hotel.submit_for_review", // Submit hotel chờ admin duyệt — hotel_owner
+  "hotel.submit_for_review", // Submit hotel chờ admin duyệt — partner
   "hotel.approve", // Duyệt hotel — admin
   "hotel.reject", // Từ chối hotel — admin
   "hotel.suspend", // Tạm khóa hotel — admin
 
   // Room
   "room.read_public", // Xem phòng đã published — tất cả
-  "room.manage_own_hotel", // Quản lý phòng hotel của mình — hotel_owner
+  "room.manage_own_hotel", // Quản lý phòng hotel của mình — partner
   "room.manage_all", // Quản lý phòng bất kỳ — admin
-  "room.set_availability", // Đặt lịch trống/bận — hotel_owner
-  "room.set_price", // Đặt giá phòng — hotel_owner
+  "room.set_availability", // Đặt lịch trống/bận — partner
+  "room.set_price", // Đặt giá phòng — partner
 
   // Booking
   "booking.create", // Tạo booking — guest
   "booking.read_own", // Xem booking của chính mình (guest) — guest
-  "booking.read_own_hotel", // Xem booking thuộc hotel của mình — hotel_owner
+  "booking.read_own_hotel", // Xem booking thuộc hotel của mình — partner
   "booking.read_all", // Xem toàn bộ booking — admin
   "booking.cancel_own", // Hủy booking của chính mình — guest
-  "booking.cancel_own_hotel", // Hủy booking tại hotel của mình — hotel_owner
+  "booking.cancel_own_hotel", // Hủy booking tại hotel của mình — partner
   "booking.cancel_all", // Hủy bất kỳ booking — admin
-  "booking.update_status_own_hotel", // Cập nhật trạng thái booking tại hotel mình — hotel_owner
+  "booking.update_status_own_hotel", // Cập nhật trạng thái booking tại hotel mình — partner
   "booking.update_status_all", // Cập nhật trạng thái bất kỳ — admin
-  "booking.set_no_show", // Đánh dấu no-show — hotel_owner
+  "booking.set_no_show", // Đánh dấu no-show — partner
 
   // Review
   "review.create", // Viết review — guest
   "review.read_all", // Xem tất cả review — tất cả
   "review.edit_own", // Sửa review của mình — guest
   "review.delete_own", // Xóa review của mình — guest
-  "review.reply_own_hotel", // Phản hồi review tại hotel của mình — hotel_owner
-  "review.flag_own_hotel", // Báo cáo review vi phạm tại hotel mình — hotel_owner
+  "review.reply_own_hotel", // Phản hồi review tại hotel của mình — partner
+  "review.flag_own_hotel", // Báo cáo review vi phạm tại hotel mình — partner
   "review.moderate_all", // Kiểm duyệt / xóa bất kỳ review — admin
   "review.delete_all", // Xóa bất kỳ review — admin
 
   // Payment
   "payment.create", // Thanh toán booking — guest
   "payment.read_own", // Xem lịch sử thanh toán của mình — guest
-  "payment.read_own_hotel", // Xem thanh toán thuộc hotel của mình — hotel_owner
+  "payment.read_own_hotel", // Xem thanh toán thuộc hotel của mình — partner
   "payment.read_all", // Xem toàn bộ giao dịch — admin
   "payment.refund", // Hoàn tiền — admin
-  "payment.request_payout", // Yêu cầu rút tiền — hotel_owner
+  "payment.request_payout", // Yêu cầu rút tiền — partner
   "payment.approve_payout", // Duyệt rút tiền — admin
 
   // Image & Amenity
-  "image.manage_own_hotel", // Quản lý ảnh hotel của mình — hotel_owner
+  "image.manage_own_hotel", // Quản lý ảnh hotel của mình — partner
   "image.manage_all", // Quản lý ảnh bất kỳ — admin
-  "amenity.read_all", // Xem danh sách tiện nghi để gán vào hotel — hotel_owner + admin
+  "amenity.read_all", // Xem danh sách tiện nghi để gán vào hotel — partner + admin
   "amenity.manage", // Thêm / sửa / xóa tiện nghi — admin
 
   // Account (profile của chính user)
-  "account.read_own", // Xem profile của mình — guest + hotel_owner
-  "account.update_own", // Cập nhật profile của mình — guest + hotel_owner
+  "account.read_own", // Xem profile của mình — guest + partner
+  "account.update_own", // Cập nhật profile của mình — guest + partner
 
   // User management (admin)
   "user.manage", // Quản lý người dùng — admin
@@ -73,7 +73,7 @@ const permissionCodes = [
   "permission.manage", // Quản lý permissions — admin
 
   // Dashboard & System
-  "dashboard.read", // Xem dashboard hotel của mình — hotel_owner
+  "dashboard.read", // Xem dashboard hotel của mình — partner
   "dashboard.read_all", // Xem dashboard toàn hệ thống — admin
   "audit_log.read", // Xem audit log — admin
   "system.config", // Cấu hình hệ thống — admin
@@ -145,7 +145,7 @@ module.exports = {
       },
       {
         id: crypto.randomUUID(),
-        name: "hotel_owner",
+        name: "partner",
         description: "Đối tác sở hữu / quản lý hotel",
         is_system: true,
         created_at: now,
@@ -180,7 +180,7 @@ module.exports = {
 
     // 3. Lấy lại ID từ DB
     const [roles] = await queryInterface.sequelize.query(
-      `SELECT id, name FROM roles WHERE name IN ('guest', 'hotel_owner', 'admin');`,
+      `SELECT id, name FROM roles WHERE name IN ('guest', 'partner', 'admin');`,
     );
     const [permissions] = await queryInterface.sequelize.query(
       `SELECT id, code FROM permissions WHERE code IN (${permissionCodes.map(() => "?").join(",")});`,
@@ -218,7 +218,7 @@ module.exports = {
     };
 
     addMapping("guest", guestPerms);
-    addMapping("hotel_owner", hotelOwnerPerms);
+    addMapping("partner", hotelOwnerPerms);
     addMapping("admin", adminPerms);
 
     if (rolePermissionsData.length > 0) {
@@ -230,7 +230,7 @@ module.exports = {
 
   async down(queryInterface) {
     const [roles] = await queryInterface.sequelize.query(
-      `SELECT id FROM roles WHERE name IN ('guest', 'hotel_owner', 'admin');`,
+      `SELECT id FROM roles WHERE name IN ('guest', 'partner', 'admin');`,
     );
     const roleIds = roles.map((r) => r.id);
 
@@ -242,7 +242,7 @@ module.exports = {
       );
       await queryInterface.bulkDelete(
         "roles",
-        { name: ["guest", "hotel_owner", "admin"] },
+        { name: ["guest", "partner", "admin"] },
         {},
       );
     }

@@ -163,10 +163,9 @@ type CreateRoomPayload = {
 
 export const adminService = {
   getUsers: async (params?: UserFilters) => {
-    const response = await axiosInstance.get<PaginatedResponse<UsersListItem[]>>(
-      "/admin/users",
-      { params },
-    );
+    const response = await axiosInstance.get<
+      PaginatedResponse<UsersListItem[]>
+    >("/admin/users", { params });
     return response.data;
   },
 
@@ -320,10 +319,9 @@ export const adminService = {
     id: string | number,
     data: { is_published: boolean },
   ) => {
-    const response = await axiosInstance.patch<ApiResponse<AdminReviewListItem>>(
-      `/admin/reviews/${id}`,
-      data,
-    );
+    const response = await axiosInstance.patch<
+      ApiResponse<AdminReviewListItem>
+    >(`/admin/reviews/${id}`, data);
     return response.data;
   },
 
@@ -363,10 +361,7 @@ export const adminService = {
     return response.data;
   },
 
-  processWithdrawal: async (
-    id: string,
-    data: ProcessWithdrawalPayload,
-  ) => {
+  processWithdrawal: async (id: string, data: ProcessWithdrawalPayload) => {
     const response = await axiosInstance.patch<ApiResponse<WithdrawalRequest>>(
       `/admin/withdrawals/${id}/status`,
       data,
@@ -389,10 +384,9 @@ export const adminService = {
   },
 
   createRoomTypeWithHotel: async (data: CreateRoomTypeWithHotelPayload) => {
-    const response = await axiosInstance.post<ApiResponse<AdminRoomTypeListItem>>(
-      "/admin/room-types",
-      data,
-    );
+    const response = await axiosInstance.post<
+      ApiResponse<AdminRoomTypeListItem>
+    >("/admin/room-types", data);
     return response.data;
   },
 
@@ -400,21 +394,16 @@ export const adminService = {
     hotelId: string | number,
     data: CreateRoomTypePayload,
   ) => {
-    const response = await axiosInstance.post<ApiResponse<AdminRoomTypeListItem>>(
-      `/admin/hotels/${hotelId}/room-types`,
-      data,
-    );
+    const response = await axiosInstance.post<
+      ApiResponse<AdminRoomTypeListItem>
+    >(`/admin/hotels/${hotelId}/room-types`, data);
     return response.data;
   },
 
-  updateRoomType: async (
-    id: string | number,
-    data: UpdateRoomTypePayload,
-  ) => {
-    const response = await axiosInstance.put<ApiResponse<AdminRoomTypeListItem>>(
-      `/admin/room-types/${id}`,
-      data,
-    );
+  updateRoomType: async (id: string | number, data: UpdateRoomTypePayload) => {
+    const response = await axiosInstance.put<
+      ApiResponse<AdminRoomTypeListItem>
+    >(`/admin/room-types/${id}`, data);
     return response.data;
   },
 
@@ -512,7 +501,10 @@ export const adminService = {
     return response.data;
   },
 
-  addRoomImage: async (roomId: string | number, data: HotelImageUploadPayload) => {
+  addRoomImage: async (
+    roomId: string | number,
+    data: HotelImageUploadPayload,
+  ) => {
     const formData = new FormData();
     formData.append("file", data.file);
     if (data.sort_order !== undefined) {
@@ -559,9 +551,10 @@ export const adminService = {
   },
 
   getAmenities: async () => {
-    const response = await axiosInstance.get<ApiResponse<AdminAmenityOption[]>>(
-      "/admin/amenities",
-    );
+    const response =
+      await axiosInstance.get<ApiResponse<AdminAmenityOption[]>>(
+        "/admin/amenities",
+      );
     return response.data;
   },
 
@@ -631,15 +624,26 @@ export const adminService = {
         images: AdminImageItem[];
         failed: { originalName: string; reason: string }[];
       }>
-    >(
-      "/admin/images/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+    >("/admin/images/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    );
+    });
+    return response.data;
+  },
+
+  getAllImages: async (params?: PageFilters) => {
+    const response = await axiosInstance.get<
+      ApiResponse<{
+        data: AdminImageItem[];
+        pagination: {
+          total: number;
+          page: number;
+          limit: number;
+          pages: number;
+        };
+      }>
+    >("/admin/images", { params });
     return response.data;
   },
 
@@ -718,17 +722,14 @@ export const adminService = {
   getPermissions: async (params?: PageFilters & { module?: string }) => {
     const response = await axiosInstance.get<
       PaginatedResponse<AdminPermissionListItem[]>
-    >(
-      "/admin/permissions",
-      { params },
-    );
+    >("/admin/permissions", { params });
     return response.data;
   },
 
   getPermissionById: async (id: string | number) => {
-    const response = await axiosInstance.get<ApiResponse<AdminPermissionListItem>>(
-      `/admin/permissions/${id}`,
-    );
+    const response = await axiosInstance.get<
+      ApiResponse<AdminPermissionListItem>
+    >(`/admin/permissions/${id}`);
     return response.data;
   },
 
@@ -736,10 +737,9 @@ export const adminService = {
     id: string | number,
     data: { description?: string | null; module?: string },
   ) => {
-    const response = await axiosInstance.put<ApiResponse<AdminPermissionListItem>>(
-      `/admin/permissions/${id}`,
-      data,
-    );
+    const response = await axiosInstance.put<
+      ApiResponse<AdminPermissionListItem>
+    >(`/admin/permissions/${id}`, data);
     return response.data;
   },
 };

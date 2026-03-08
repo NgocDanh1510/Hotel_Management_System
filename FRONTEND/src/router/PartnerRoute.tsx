@@ -15,7 +15,7 @@ const PartnerRoute = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!hasRole("hotel_owner")) {
+  if (!hasRole("partner")) {
     return <Navigate to="/forbidden" replace />;
   }
 

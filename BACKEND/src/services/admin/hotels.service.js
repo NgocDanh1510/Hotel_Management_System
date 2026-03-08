@@ -84,16 +84,18 @@ class AdminHotelService {
       throw error;
     }
 
-    // Accept both legacy hotel_staff and current hotel_owner role names
+    // Accept both legacy hotel_staff and current partner role names
     const hasRequiredRole = user.Roles.some(
       (role) =>
-        role.name === "hotel_owner" ||
+        role.name === "partner" ||
         role.name === "hotel_staff" ||
         role.name === "admin",
     );
 
     if (!hasRequiredRole) {
-      const error = new Error("Owner must have hotel_owner, hotel_staff, or admin role");
+      const error = new Error(
+        "Owner must have partner, hotel_staff, or admin role",
+      );
       error.statusCode = 400;
       throw error;
     }
