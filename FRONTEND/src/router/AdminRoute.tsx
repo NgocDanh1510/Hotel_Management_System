@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -21,11 +21,7 @@ const AdminRoute: React.FC = () => {
     return <Navigate to="/forbidden" replace />;
   }
 
-  return (
-    <LayoutAdmin>
-      <Outlet />
-    </LayoutAdmin>
-  );
+  return <LayoutAdmin />;
 };
 
 export default AdminRoute;
