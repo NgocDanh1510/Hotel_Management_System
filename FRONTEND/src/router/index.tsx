@@ -14,6 +14,11 @@ import AdminHotelsPage from "@/pages/admin/AdminHotelsPage";
 import AdminBookingsPage from "@/pages/admin/AdminBookingsPage";
 import AdminReviewsPage from "@/pages/admin/AdminReviewsPage";
 import AdminPaymentsPage from "@/pages/admin/AdminPaymentsPage";
+import AdminAmenitiesPage from "@/pages/admin/AdminAmenitiesPage";
+import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
+import AdminRolesPage from "@/pages/admin/AdminRolesPage";
+import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
+import AdminImagesPage from "@/pages/admin/AdminImagesPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
 
@@ -78,6 +83,10 @@ const router = createBrowserRouter([
         element: <AdminHotelsPage />,
       },
       {
+        path: "rooms",
+        element: <AdminRoomsPage />,
+      },
+      {
         path: "bookings",
         element: <AdminBookingsPage />,
       },
@@ -88,6 +97,22 @@ const router = createBrowserRouter([
       {
         path: "payments",
         element: <AdminPaymentsPage />,
+      },
+      {
+        path: "amenities",
+        element: <AdminAmenitiesPage />,
+      },
+      {
+        path: "roles",
+        element: <AdminRolesPage />,
+      },
+      {
+        path: "permissions",
+        element: <AdminPermissionsPage />,
+      },
+      {
+        path: "images",
+        element: <AdminImagesPage />,
       },
     ],
   },

@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
+  Blocks,
   CalendarCheck,
   CreditCard,
   Hotel,
   LayoutDashboard,
   LogOut,
   Menu,
+  KeyRound,
+  ShieldCheck,
+  BedDouble,
+  Image,
   Star,
   Users,
   X,
@@ -17,9 +22,14 @@ const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { label: "Users", path: "/admin/users", icon: Users },
   { label: "Hotels", path: "/admin/hotels", icon: Hotel },
+  { label: "Rooms", path: "/admin/rooms", icon: BedDouble },
   { label: "Bookings", path: "/admin/bookings", icon: CalendarCheck },
   { label: "Reviews", path: "/admin/reviews", icon: Star },
   { label: "Payments", path: "/admin/payments", icon: CreditCard },
+  { label: "Amenities", path: "/admin/amenities", icon: Blocks },
+  { label: "Roles", path: "/admin/roles", icon: ShieldCheck },
+  { label: "Permissions", path: "/admin/permissions", icon: KeyRound },
+  { label: "Images", path: "/admin/images", icon: Image },
 ];
 
 const LayoutAdmin = () => {
